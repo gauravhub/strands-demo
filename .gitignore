@@ -44,12 +44,8 @@ coverage.xml
 # Jupyter Notebook
 .ipynb_checkpoints
 
-# pyenv
-.python-version
-
-# uv
+# uv cache dir (NOT uv.lock or .python-version — those are committed)
 .uv/
-uv.lock
 
 # mypy / type checkers
 .mypy_cache/
@@ -72,6 +68,7 @@ Thumbs.db
 # Secrets / env files
 .env
 .env.*
+!.env.example
 *.pem
 *.key
 
