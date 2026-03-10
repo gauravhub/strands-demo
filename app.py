@@ -5,7 +5,6 @@ import os
 import uuid
 
 import streamlit as st
-import streamlit.components.v1 as components
 from dotenv import load_dotenv
 
 from src.agent.chatbot import create_agent
@@ -66,15 +65,10 @@ def show_landing(error_msg: str | None = None) -> None:
     if error_msg:
         st.error(error_msg)
 
-    if st.button("Login", type="primary", use_container_width=True):
-        auth_url = generate_auth_request(config)
-        # Use components.html for JS redirect — st.markdown strips <script>
-        # tags, and meta-refresh fails on SCC (Cognito blocks iframe embedding).
-        components.html(
-            f'<script>window.top.location.href = "{auth_url}";</script>',
-            height=0,
-        )
-        st.stop()
+    # Generate auth URL eagerly so st.link_button renders a direct <a> tag.
+    # No JS redirect needed — works on SCC, localhost, and headless browsers.
+    auth_url = generate_auth_request(config)
+    st.link_button("Login", auth_url, type="primary", use_container_width=True)
 
 
 def show_main_app() -> None:
@@ -83,20 +77,14 @@ def show_main_app() -> None:
     st.title("🤖 Strands Demo")
     st.caption(f"Logged in as **{user.get('username', 'unknown')}**")
 
+    logout_url = (
+        f"{config.logout_endpoint}"
+        f"?client_id={config.client_id}"
+        f"&logout_uri={config.redirect_uri}"
+    )
     col1, col2 = st.columns([8, 1])
     with col2:
-        if st.button("Logout", type="secondary"):
-            clear_session()
-            logout_url = (
-                f"{config.logout_endpoint}"
-                f"?client_id={config.client_id}"
-                f"&logout_uri={config.redirect_uri}"
-            )
-            components.html(
-                f'<script>window.top.location.href = "{logout_url}";</script>',
-                height=0,
-            )
-            st.stop()
+        st.link_button("Logout", logout_url, type="secondary")
 
     st.divider()
 
