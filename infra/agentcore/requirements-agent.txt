@@ -2,7 +2,7 @@
 # This file is used exclusively by the Dockerfile (infra/agentcore/Dockerfile).
 # Do NOT add these to pyproject.toml — they are not needed by the Streamlit host.
 
-strands-agents>=0.1.0
+strands-agents[otel]>=0.1.0
 strands-agents-tools>=0.1.0
 bedrock-agentcore>=0.1.0
 anthropic>=0.40.0

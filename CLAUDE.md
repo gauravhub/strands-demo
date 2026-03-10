@@ -10,6 +10,8 @@ Auto-generated from all feature plans. Last updated: 2026-03-09
 - None — all session state in `st.session_state` (ephemeral, per browser tab) (004-agentcore-deploy)
 - Python 3.11 (match `.python-version`; set in SCC Advanced Settings) + streamlit, strands-agents, boto3, authlib, python-dotenv, anthropic, bedrock-agentcore, requests (all from `pyproject.toml`) (005-streamlit-cloud-deploy)
 - N/A — stateless frontend, all state in `st.session_state` (005-streamlit-cloud-deploy)
+- Python 3.11+ + `strands-agents[otel]>=0.1.0`, `aws-opentelemetry-distro>=0.10.1`, `boto3>=1.34.0`, AWS CLI v2 (006-agentcore-observability)
+- CloudWatch Logs (log groups for traces, application logs, usage logs) (006-agentcore-observability)
 
 - Python 3.11+ + `strands-agents`, `strands-agents-tools`, `streamlit`, `boto3`, (001-python-env-bootstrap)
 
@@ -29,9 +31,9 @@ cd src [ONLY COMMANDS FOR ACTIVE TECHNOLOGIES][ONLY COMMANDS FOR ACTIVE TECHNOLO
 Python 3.11+: Follow standard conventions
 
 ## Recent Changes
+- 006-agentcore-observability: Added Python 3.11+ + `strands-agents[otel]>=0.1.0`, `aws-opentelemetry-distro>=0.10.1`, `boto3>=1.34.0`, AWS CLI v2
 - 005-streamlit-cloud-deploy: Added Python 3.11 (match `.python-version`; set in SCC Advanced Settings) + streamlit, strands-agents, boto3, authlib, python-dotenv, anthropic, bedrock-agentcore, requests (all from `pyproject.toml`)
 - 004-agentcore-deploy: Added Python 3.11+
-- 003-strands-reasoning-chatbot: Added Python 3.11+ + `strands-agents>=0.1.0` (includes `AnthropicModel`), `strands-agents-tools>=0.1.0` (includes `tavily`), `streamlit>=1.35.0`, `python-dotenv>=1.0.0`
 
 
 <!-- MANUAL ADDITIONS START -->
