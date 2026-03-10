@@ -59,12 +59,13 @@ The IAM user/role running these commands needs these permissions:
 }
 ```
 
-## Step 1: Update CloudFormation Stack (Transaction Search + Log Groups + IAM)
+## Step 1: Update CloudFormation Stack (Log Groups) + Verify Transaction Search
 
 The CFN stack update handles:
-- Transaction Search setup via `AWS::XRay::TransactionSearchConfig` + `AWS::Logs::ResourcePolicy`
-- CloudWatch Log Group pre-creation for observability
-- Any IAM policy expansion needed
+- CloudWatch Log Group pre-creation for observability (Runtime app/usage logs, Identity app logs)
+- Log group ARN outputs for use in delivery configuration
+
+**Note**: Transaction Search (`AWS::Logs::ResourcePolicy` + `AWS::XRay::TransactionSearchConfig`) is an account-level singleton. If already enabled via CLI (see fallback below), the CFN resources are not needed. The current template omits them to avoid `AlreadyExists` errors. Verify with `aws xray get-trace-segment-destination`.
 
 ```bash
 aws cloudformation update-stack \
