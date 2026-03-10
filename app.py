@@ -1,20 +1,33 @@
 """Strands Demo — Streamlit entry point with Cognito authentication."""
 
 import logging
+import os
 
 import streamlit as st
 from dotenv import load_dotenv
 
+from src.agent.chatbot import create_agent
 from src.auth.config import load_config
 from src.auth.oauth import exchange_code, generate_auth_request, parse_id_token
 from src.auth.session import clear_session, get_user, is_authenticated, store_session
+from src.chat.ui import render_chatbot
 
 logger = logging.getLogger(__name__)
 
 # ── Startup ────────────────────────────────────────────────────────────────────
 
 load_dotenv()
-logging.basicConfig(level=logging.INFO)
+log_level = getattr(logging, os.getenv("LOG_LEVEL", "INFO").upper(), logging.INFO)
+logging.basicConfig(level=log_level)
+
+# Validate required env vars before anything else
+_missing = [k for k in ("ANTHROPIC_API_KEY", "TAVILY_API_KEY") if not os.getenv(k)]
+if _missing:
+    st.error(
+        f"Missing required environment variables: {', '.join(_missing)}. "
+        "Add them to your .env file and restart."
+    )
+    st.stop()
 
 try:
     config = load_config()
@@ -52,22 +65,31 @@ def show_main_app() -> None:
     user = get_user()
     st.title("🤖 Strands Demo")
     st.caption(f"Logged in as **{user.get('username', 'unknown')}**")
-    st.divider()
-    st.info("Welcome to Strands Demo — AWS Strands Agents with Cognito authentication.")
 
-    # US3: Logout button
-    if st.button("Logout", type="secondary"):
-        clear_session()
-        logout_url = (
-            f"{config.logout_endpoint}"
-            f"?client_id={config.client_id}"
-            f"&logout_uri={config.redirect_uri}"
-        )
-        st.markdown(
-            f'<meta http-equiv="refresh" content="0;url={logout_url}">',
-            unsafe_allow_html=True,
-        )
+    col1, col2 = st.columns([8, 1])
+    with col2:
+        if st.button("Logout", type="secondary"):
+            clear_session()
+            logout_url = (
+                f"{config.logout_endpoint}"
+                f"?client_id={config.client_id}"
+                f"&logout_uri={config.redirect_uri}"
+            )
+            st.markdown(
+                f'<meta http-equiv="refresh" content="0;url={logout_url}">',
+                unsafe_allow_html=True,
+            )
+            st.stop()
+
+    st.divider()
+
+    try:
+        agent = create_agent()
+    except EnvironmentError as e:
+        st.error(str(e))
         st.stop()
+
+    render_chatbot(agent)
 
 
 # ── Routing ────────────────────────────────────────────────────────────────────
