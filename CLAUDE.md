@@ -3,6 +3,8 @@
 Auto-generated from all feature plans. Last updated: 2026-03-09
 
 ## Active Technologies
+- Python 3.11+ + `streamlit>=1.35.0`, `boto3>=1.34.0`, `python-dotenv>=1.0.0`, `authlib>=1.3.2` (new) (002-cognito-login)
+- None — session tokens held in `st.session_state` (in-memory, per tab) (002-cognito-login)
 
 - Python 3.11+ + `strands-agents`, `strands-agents-tools`, `streamlit`, `boto3`, (001-python-env-bootstrap)
 
@@ -22,6 +24,7 @@ cd src [ONLY COMMANDS FOR ACTIVE TECHNOLOGIES][ONLY COMMANDS FOR ACTIVE TECHNOLO
 Python 3.11+: Follow standard conventions
 
 ## Recent Changes
+- 002-cognito-login: Added Python 3.11+ + `streamlit>=1.35.0`, `boto3>=1.34.0`, `python-dotenv>=1.0.0`, `authlib>=1.3.2` (new)
 
 - 001-python-env-bootstrap: Added Python 3.11+ + `strands-agents`, `strands-agents-tools`, `streamlit`, `boto3`,
 

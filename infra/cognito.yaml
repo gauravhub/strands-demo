@@ -1,0 +1,140 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  Strands Demo — Cognito User Pool with Hosted UI (OAuth2 authorization code flow).
+  Provisions: UserPool, UserPoolDomain, UserPoolClient.
+  Post-deploy: run scripts/provision_users.py to create test users.
+
+Parameters:
+  DomainPrefix:
+    Type: String
+    Description: >
+      Globally unique prefix for the Cognito Hosted UI domain.
+      Final URL: https://{DomainPrefix}.auth.{Region}.amazoncognito.com
+      Must be lowercase alphanumeric with hyphens only (e.g. strands-demo-yourname).
+    AllowedPattern: "^[a-z0-9][a-z0-9-]{2,61}[a-z0-9]$"
+    ConstraintDescription: Lowercase alphanumeric and hyphens, 4-63 characters.
+
+  CallbackURL:
+    Type: String
+    Default: "http://localhost:8501"
+    Description: >
+      URL Cognito redirects to after successful authentication.
+      For local dev: http://localhost:8501
+      For deployed environments: the public HTTPS URL of the Streamlit app.
+
+Resources:
+
+  # ─── User Pool ──────────────────────────────────────────────────────────────
+  UserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: strands-demo-user-pool
+
+      # Username sign-in (users log in with their username, not email)
+      UsernameConfiguration:
+        CaseSensitive: false
+
+      # Relaxed password policy to allow simple demo passwords
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+          RequireUppercase: false
+          RequireLowercase: false
+          RequireNumbers: false
+          RequireSymbols: false
+
+      # No self-registration (sign-up out of scope); welcome email suppressed in provision script
+      AdminCreateUserConfig:
+        AllowAdminCreateUserOnly: true
+
+      Schema:
+        - Name: email
+          AttributeDataType: String
+          Mutable: true
+          Required: false
+
+  # ─── Hosted UI Domain ────────────────────────────────────────────────────────
+  UserPoolDomain:
+    Type: AWS::Cognito::UserPoolDomain
+    Properties:
+      Domain: !Ref DomainPrefix
+      UserPoolId: !Ref UserPool
+
+  # ─── App Client (confidential, authorization code grant) ─────────────────────
+  UserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    DependsOn: UserPoolDomain
+    Properties:
+      ClientName: strands-demo-app-client
+      UserPoolId: !Ref UserPool
+
+      # Confidential client: has a client secret (server-side app)
+      GenerateSecret: true
+
+      # OAuth2 authorization code flow only (no implicit grant)
+      AllowedOAuthFlows:
+        - code
+      AllowedOAuthFlowsUserPoolClient: true
+
+      # Required scopes: openid (ID token), email, profile (username claim)
+      AllowedOAuthScopes:
+        - openid
+        - email
+        - profile
+
+      # Hosted UI callback and sign-out URLs
+      CallbackURLs:
+        - !Ref CallbackURL
+      LogoutURLs:
+        - !Ref CallbackURL
+
+      # Supported identity providers (Cognito User Pool only)
+      SupportedIdentityProviders:
+        - COGNITO
+
+      # Token validity (using Cognito defaults)
+      AccessTokenValidity: 60       # minutes
+      IdTokenValidity: 60           # minutes
+      RefreshTokenValidity: 30      # days
+      TokenValidityUnits:
+        AccessToken: minutes
+        IdToken: minutes
+        RefreshToken: days
+
+      # Auth flows: only refresh token needed server-side (Hosted UI handles the rest)
+      ExplicitAuthFlows:
+        - ALLOW_REFRESH_TOKEN_AUTH
+        - ALLOW_USER_SRP_AUTH
+
+# ─── Outputs (populate .env after deploy) ─────────────────────────────────────
+Outputs:
+
+  UserPoolId:
+    Description: Cognito User Pool ID → COGNITO_USER_POOL_ID in .env
+    Value: !Ref UserPool
+    Export:
+      Name: !Sub "${AWS::StackName}-UserPoolId"
+
+  UserPoolClientId:
+    Description: App Client ID → COGNITO_CLIENT_ID in .env
+    Value: !Ref UserPoolClient
+    Export:
+      Name: !Sub "${AWS::StackName}-UserPoolClientId"
+
+  UserPoolClientSecret:
+    Description: App Client Secret → COGNITO_CLIENT_SECRET in .env
+    Value: !GetAtt UserPoolClient.ClientSecret
+    Export:
+      Name: !Sub "${AWS::StackName}-UserPoolClientSecret"
+
+  UserPoolDomainURL:
+    Description: Hosted UI base URL → COGNITO_DOMAIN in .env (include https://)
+    Value: !Sub "https://${DomainPrefix}.auth.${AWS::Region}.amazoncognito.com"
+    Export:
+      Name: !Sub "${AWS::StackName}-UserPoolDomainURL"
+
+  Region:
+    Description: AWS Region → AWS_REGION in .env
+    Value: !Ref AWS::Region
+    Export:
+      Name: !Sub "${AWS::StackName}-Region"
