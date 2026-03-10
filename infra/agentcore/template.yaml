@@ -311,6 +311,35 @@ Resources:
       ServiceToken: !GetAtt BuildTriggerLambda.Arn
       ProjectName: !Ref AgentImageBuild
 
+  # ── Observability: Transaction Search ────────────────────────────────────────
+  # NOTE: AWS::Logs::ResourcePolicy (TransactionSearchXRayAccess) and
+  # AWS::XRay::TransactionSearchConfig are account-level singletons that were
+  # already created via CLI. They are NOT managed by this stack to avoid
+  # AlreadyExists errors. Verify with: aws xray get-trace-segment-destination
+
+  # ── Observability: CloudWatch Log Groups ────────────────────────────────────
+
+  RuntimeApplicationLogsGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/vendedlogs/bedrock-agentcore/runtimes/${AgentRuntime.AgentRuntimeId}/application-logs"
+      RetentionInDays: 30
+    DeletionPolicy: Delete
+
+  RuntimeUsageLogsGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/vendedlogs/bedrock-agentcore/runtimes/${AgentRuntime.AgentRuntimeId}/usage-logs"
+      RetentionInDays: 30
+    DeletionPolicy: Delete
+
+  IdentityApplicationLogsGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: "/aws/vendedlogs/bedrock-agentcore/identity/application-logs"
+      RetentionInDays: 30
+    DeletionPolicy: Delete
+
   # ── AgentCore Runtime ─────────────────────────────────────────────────────────
 
   AgentRuntime:
@@ -359,3 +388,15 @@ Outputs:
     Value: !GetAtt ECRRepository.RepositoryUri
     Export:
       Name: !Sub "${AWS::StackName}-ECRRepositoryUri"
+
+  RuntimeApplicationLogsGroupArn:
+    Description: ARN of the Runtime application logs group — use as delivery destination for APPLICATION_LOGS.
+    Value: !GetAtt RuntimeApplicationLogsGroup.Arn
+
+  RuntimeUsageLogsGroupArn:
+    Description: ARN of the Runtime usage logs group — use as delivery destination for USAGE_LOGS.
+    Value: !GetAtt RuntimeUsageLogsGroup.Arn
+
+  IdentityApplicationLogsGroupArn:
+    Description: ARN of the Identity application logs group — use as delivery destination for Identity APPLICATION_LOGS.
+    Value: !GetAtt IdentityApplicationLogsGroup.Arn
