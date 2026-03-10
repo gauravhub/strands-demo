@@ -67,9 +67,10 @@ def show_landing(error_msg: str | None = None) -> None:
 
     if st.button("Login", type="primary", use_container_width=True):
         auth_url = generate_auth_request(config)
-        # Meta-refresh redirect — works in Streamlit without custom components
+        # Use top-level JS redirect — meta-refresh fails on SCC because
+        # Cognito blocks iframe embedding (X-Frame-Options).
         st.markdown(
-            f'<meta http-equiv="refresh" content="0;url={auth_url}">',
+            f'<script>window.top.location.href = "{auth_url}";</script>',
             unsafe_allow_html=True,
         )
         st.stop()
@@ -91,7 +92,7 @@ def show_main_app() -> None:
                 f"&logout_uri={config.redirect_uri}"
             )
             st.markdown(
-                f'<meta http-equiv="refresh" content="0;url={logout_url}">',
+                f'<script>window.top.location.href = "{logout_url}";</script>',
                 unsafe_allow_html=True,
             )
             st.stop()
