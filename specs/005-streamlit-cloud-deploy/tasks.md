@@ -47,8 +47,8 @@
 ### Implementation for User Story 1
 
 <!-- sequential -->
-- [ ] T006 [US1] Deploy the app on Streamlit Community Cloud: go to share.streamlit.io, connect the `strands-demo` GitHub repo, set branch to `main`, set main file path to `app.py`, set Python version to 3.11 in Advanced Settings, and click Deploy
-- [ ] T007 [US1] Record the assigned `*.streamlit.app` public URL in specs/005-streamlit-cloud-deploy/quickstart.md and verify the landing page loads (may show config errors until secrets are configured in US2)
+- [x] T006 [US1] Deploy the app on Streamlit Community Cloud: go to share.streamlit.io, connect the `strands-demo` GitHub repo, set branch to `main`, set main file path to `app.py`, set Python version to 3.11 in Advanced Settings, and click Deploy
+- [x] T007 [US1] Record the assigned `*.streamlit.app` public URL in specs/005-streamlit-cloud-deploy/quickstart.md and verify the landing page loads (may show config errors until secrets are configured in US2)
 
 **Checkpoint**: App is deployed on SCC — landing page accessible (secrets not yet configured)
 
@@ -63,8 +63,8 @@
 ### Implementation for User Story 2
 
 <!-- sequential -->
-- [ ] T008 [US2] Configure secrets in SCC dashboard (Settings → Secrets): paste TOML-format secrets with all 10 required keys from .env.example values — COGNITO_USER_POOL_ID, COGNITO_CLIENT_ID, COGNITO_CLIENT_SECRET, COGNITO_DOMAIN, COGNITO_REDIRECT_URI (set to the *.streamlit.app URL from T007), ANTHROPIC_API_KEY, TAVILY_API_KEY, AGENTCORE_RUNTIME_ARN, AWS_REGION, LOG_LEVEL
-- [ ] T009 [US2] Reboot the SCC app and verify it starts without missing environment variable errors — landing page should render with Login button visible and no error banners
+- [x] T008 [US2] Configure secrets in SCC dashboard (Settings → Secrets): paste TOML-format secrets with all 10 required keys from .env.example values — COGNITO_USER_POOL_ID, COGNITO_CLIENT_ID, COGNITO_CLIENT_SECRET, COGNITO_DOMAIN, COGNITO_REDIRECT_URI (set to the *.streamlit.app URL from T007), ANTHROPIC_API_KEY, TAVILY_API_KEY, AGENTCORE_RUNTIME_ARN, AWS_REGION, LOG_LEVEL
+- [x] T009 [US2] Reboot the SCC app and verify it starts without missing environment variable errors — landing page should render with Login button visible and no error banners
 
 **Checkpoint**: SCC app is running with all secrets configured — ready for auth flow testing
 
@@ -79,9 +79,9 @@
 ### Implementation for User Story 3
 
 <!-- sequential -->
-- [ ] T010 [US3] Update the Cognito App Client to add the SCC public URL as an allowed callback URI and logout URI using `aws cognito-idp update-user-pool-client` — keep existing `http://localhost:8501` URIs alongside the new SCC URL
-- [ ] T011 [US3] Update COGNITO_REDIRECT_URI in SCC secrets to match the exact SCC public URL (including https:// prefix, no trailing slash) and reboot the app
-- [ ] T012 [US3] Perform end-to-end smoke test on the SCC URL: visit landing page → click Login → authenticate in Cognito hosted UI → verify redirect back to SCC → verify chatbot interface loads with username displayed → send a test message → verify AgentCore response streams back
+- [x] T010 [US3] Update the Cognito App Client to add the SCC public URL as an allowed callback URI and logout URI using `aws cognito-idp update-user-pool-client` — keep existing `http://localhost:8501` URIs alongside the new SCC URL
+- [x] T011 [US3] Update COGNITO_REDIRECT_URI in SCC secrets to match the exact SCC public URL (including https:// prefix, no trailing slash) and reboot the app
+- [x] T012 [US3] Perform end-to-end smoke test on the SCC URL: visit landing page → click Login → authenticate in Cognito hosted UI → verify redirect back to SCC → verify chatbot interface loads with username displayed → send a test message → verify AgentCore response streams back
 
 **Checkpoint**: Full authentication flow works on the deployed SCC URL
 
@@ -92,8 +92,8 @@
 **Purpose**: Documentation and validation
 
 <!-- parallel-group: 2 (max 3 concurrent) -->
-- [ ] T013 [P] Update specs/005-streamlit-cloud-deploy/quickstart.md with the actual SCC URL, GitHub repo URL, and any deployment notes discovered during implementation
-- [ ] T014 [P] Update /home/dhamijag/playground/strands-demo/.env.example with a comment documenting the SCC secrets TOML format and a reference to .streamlit/secrets.toml.example
+- [x] T013 [P] Update specs/005-streamlit-cloud-deploy/quickstart.md with the actual SCC URL, GitHub repo URL, and any deployment notes discovered during implementation
+- [x] T014 [P] Update /home/dhamijag/playground/strands-demo/.env.example with a comment documenting the SCC secrets TOML format and a reference to .streamlit/secrets.toml.example
 
 ---
 

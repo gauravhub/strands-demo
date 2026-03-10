@@ -1,5 +1,8 @@
 # Quickstart: Deploy to Streamlit Community Cloud
 
+**Deployed URL**: https://agentcore-demo.streamlit.app/
+**GitHub Repo**: https://github.com/gauravhub/strands-demo
+
 ## Prerequisites
 
 - GitHub account
@@ -11,11 +14,9 @@
 ## Step 1: Generate requirements.txt
 
 ```bash
-# From repo root — extract runtime dependencies from pyproject.toml
-uv pip compile pyproject.toml -o requirements.txt --no-dev
+# From repo root — extract runtime dependencies from uv.lock
+uv export --no-dev --no-hashes > requirements.txt
 ```
-
-Or manually create `requirements.txt` listing all dependencies from `pyproject.toml [project.dependencies]`.
 
 ## Step 2: Push to GitHub
 
@@ -23,17 +24,16 @@ Or manually create `requirements.txt` listing all dependencies from `pyproject.t
 # Create public repo on GitHub (via gh CLI or web UI)
 gh repo create strands-demo --public --source=. --remote=origin
 
-# Push current branch
-git push -u origin main
-git push origin 005-streamlit-cloud-deploy
+# Push all branches
+git push -u origin --all
 ```
 
 ## Step 3: Deploy on Streamlit Community Cloud
 
 1. Go to [share.streamlit.io](https://share.streamlit.io)
 2. Click "New app"
-3. Select your GitHub repo: `<username>/strands-demo`
-4. Set **Branch**: `main` (or feature branch for testing)
+3. Select your GitHub repo: `gauravhub/strands-demo`
+4. Set **Branch**: `main`
 5. Set **Main file path**: `app.py`
 6. Open **Advanced settings**:
    - Set Python version to **3.11**
@@ -42,14 +42,14 @@ git push origin 005-streamlit-cloud-deploy
 ## Step 4: Configure Secrets
 
 1. In SCC app dashboard, click **Settings** → **Secrets**
-2. Paste TOML-format secrets:
+2. Paste TOML-format secrets (see `.streamlit/secrets.toml.example`):
 
 ```toml
 COGNITO_USER_POOL_ID = "us-east-1_XXXXXXXXX"
 COGNITO_CLIENT_ID = "your-client-id"
 COGNITO_CLIENT_SECRET = "your-client-secret"
-COGNITO_DOMAIN = "https://your-domain.auth.us-east-1.amazoncognito.com"
-COGNITO_REDIRECT_URI = "https://your-app.streamlit.app"
+COGNITO_DOMAIN = "https://strands-demo-dhamijag.auth.us-east-1.amazoncognito.com"
+COGNITO_REDIRECT_URI = "https://agentcore-demo.streamlit.app"
 ANTHROPIC_API_KEY = "sk-ant-..."
 TAVILY_API_KEY = "tvly-..."
 AGENTCORE_RUNTIME_ARN = "arn:aws:bedrock-agentcore:us-east-1:ACCOUNT:runtime/ID"
@@ -62,12 +62,17 @@ LOG_LEVEL = "INFO"
 ## Step 5: Update Cognito Redirect URIs
 
 ```bash
-# Add the SCC URL as allowed callback and logout URI
+# First read existing settings
+aws cognito-idp describe-user-pool-client \
+  --user-pool-id YOUR_POOL_ID \
+  --client-id YOUR_CLIENT_ID
+
+# Then update with both localhost and SCC URLs
 aws cognito-idp update-user-pool-client \
-  --user-pool-id us-east-1_XXXXXXXXX \
+  --user-pool-id YOUR_POOL_ID \
   --client-id YOUR_CLIENT_ID \
-  --callback-urls '["http://localhost:8501","https://your-app.streamlit.app"]' \
-  --logout-urls '["http://localhost:8501","https://your-app.streamlit.app"]' \
+  --callback-urls '["http://localhost:8501","https://agentcore-demo.streamlit.app"]' \
+  --logout-urls '["http://localhost:8501","https://agentcore-demo.streamlit.app"]' \
   --allowed-o-auth-flows code \
   --allowed-o-auth-scopes openid email profile \
   --allowed-o-auth-flows-user-pool-client \
@@ -76,7 +81,7 @@ aws cognito-idp update-user-pool-client \
 
 ## Step 6: Smoke Test
 
-1. Visit `https://your-app.streamlit.app`
+1. Visit https://agentcore-demo.streamlit.app
 2. Verify landing page renders with Login button
 3. Click Login → redirects to Cognito hosted UI
 4. Authenticate → redirects back to SCC URL
