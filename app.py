@@ -5,6 +5,7 @@ import os
 import uuid
 
 import streamlit as st
+import streamlit.components.v1 as components
 from dotenv import load_dotenv
 
 from src.agent.chatbot import create_agent
@@ -67,11 +68,11 @@ def show_landing(error_msg: str | None = None) -> None:
 
     if st.button("Login", type="primary", use_container_width=True):
         auth_url = generate_auth_request(config)
-        # Use top-level JS redirect — meta-refresh fails on SCC because
-        # Cognito blocks iframe embedding (X-Frame-Options).
-        st.markdown(
+        # Use components.html for JS redirect — st.markdown strips <script>
+        # tags, and meta-refresh fails on SCC (Cognito blocks iframe embedding).
+        components.html(
             f'<script>window.top.location.href = "{auth_url}";</script>',
-            unsafe_allow_html=True,
+            height=0,
         )
         st.stop()
 
@@ -91,9 +92,9 @@ def show_main_app() -> None:
                 f"?client_id={config.client_id}"
                 f"&logout_uri={config.redirect_uri}"
             )
-            st.markdown(
+            components.html(
                 f'<script>window.top.location.href = "{logout_url}";</script>',
-                unsafe_allow_html=True,
+                height=0,
             )
             st.stop()
 
