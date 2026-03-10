@@ -18,9 +18,9 @@
 **Purpose**: Generate dependency manifest and prepare repository for SCC deployment
 
 <!-- parallel-group: 1 (max 3 concurrent) -->
-- [ ] T001 [P] Generate requirements.txt at repository root from pyproject.toml dependencies — list all runtime dependencies from `[project.dependencies]` section, pin versions to match uv.lock, exclude dev dependencies
-- [ ] T002 [P] Verify .gitignore excludes .env, .env.*, .streamlit/secrets.toml and includes !.env.example — update /home/dhamijag/playground/strands-demo/.gitignore if needed
-- [ ] T003 [P] Create .streamlit/secrets.toml.example template file at /home/dhamijag/playground/strands-demo/.streamlit/secrets.toml.example with TOML-format placeholders for all required secrets (COGNITO_USER_POOL_ID, COGNITO_CLIENT_ID, COGNITO_CLIENT_SECRET, COGNITO_DOMAIN, COGNITO_REDIRECT_URI, ANTHROPIC_API_KEY, TAVILY_API_KEY, AGENTCORE_RUNTIME_ARN, AWS_REGION, LOG_LEVEL)
+- [x] T001 [P] Generate requirements.txt at repository root from pyproject.toml dependencies — list all runtime dependencies from `[project.dependencies]` section, pin versions to match uv.lock, exclude dev dependencies
+- [x] T002 [P] Verify .gitignore excludes .env, .env.*, .streamlit/secrets.toml and includes !.env.example — update /home/dhamijag/playground/strands-demo/.gitignore if needed
+- [x] T003 [P] Create .streamlit/secrets.toml.example template file at /home/dhamijag/playground/strands-demo/.streamlit/secrets.toml.example with TOML-format placeholders for all required secrets (COGNITO_USER_POOL_ID, COGNITO_CLIENT_ID, COGNITO_CLIENT_SECRET, COGNITO_DOMAIN, COGNITO_REDIRECT_URI, ANTHROPIC_API_KEY, TAVILY_API_KEY, AGENTCORE_RUNTIME_ARN, AWS_REGION, LOG_LEVEL)
 
 ---
 
@@ -31,8 +31,8 @@
 **⚠️ CRITICAL**: SCC cannot deploy without a GitHub remote
 
 <!-- sequential -->
-- [ ] T004 Create a public GitHub repository named `strands-demo` using `gh repo create` CLI and add it as the `origin` remote
-- [ ] T005 Push all branches (main and feature branches) to the GitHub remote with `git push -u origin --all`
+- [x] T004 Create a public GitHub repository named `strands-demo` using `gh repo create` CLI and add it as the `origin` remote
+- [x] T005 Push all branches (main and feature branches) to the GitHub remote with `git push -u origin --all`
 
 **Checkpoint**: GitHub remote is live — SCC can now connect to the repository
 
