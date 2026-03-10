@@ -2,15 +2,17 @@
 
 import logging
 import os
+import uuid
 
 import streamlit as st
 from dotenv import load_dotenv
 
 from src.agent.chatbot import create_agent
+from src.agentcore.config import load_agentcore_config
 from src.auth.config import load_config
 from src.auth.oauth import exchange_code, generate_auth_request, parse_id_token
 from src.auth.session import clear_session, get_user, is_authenticated, store_session
-from src.chat.ui import render_chatbot
+from src.chat.ui import render_chatbot, render_chatbot_agentcore
 
 logger = logging.getLogger(__name__)
 
@@ -34,6 +36,19 @@ try:
 except EnvironmentError as e:
     st.error(f"Configuration error: {e}")
     st.stop()
+
+# AgentCore configuration — optional; None = local fallback mode.
+# Set AGENTCORE_RUNTIME_ARN in .env to route invocations to AgentCore.
+try:
+    _agentcore_config = load_agentcore_config()
+except EnvironmentError as e:
+    st.error(f"AgentCore configuration error: {e}")
+    st.stop()
+
+if _agentcore_config:
+    logger.info("AgentCore mode: runtime_arn=%s", _agentcore_config.runtime_arn)
+else:
+    logger.info("Local agent mode (AGENTCORE_RUNTIME_ARN not set)")
 
 st.set_page_config(page_title="Strands Demo", page_icon="🤖")
 
@@ -83,25 +98,42 @@ def show_main_app() -> None:
 
     st.divider()
 
-    try:
-        agent = create_agent()
-    except EnvironmentError as e:
-        st.error(str(e))
-        st.stop()
-
-    render_chatbot(agent)
+    if _agentcore_config:
+        # AgentCore mode — forward Cognito token to the managed Runtime endpoint
+        session_id = st.session_state.setdefault(
+            "agentcore_session_id", str(uuid.uuid4())
+        )
+        render_chatbot_agentcore(
+            config=_agentcore_config,
+            access_token=user["access_token"],
+            session_id=session_id,
+        )
+    else:
+        # Local fallback mode — run agent in-process (feature 003 behaviour)
+        # Verify FR-011: existing flow is unchanged when AGENTCORE_RUNTIME_ARN is unset
+        try:
+            agent = create_agent()
+        except EnvironmentError as e:
+            st.error(str(e))
+            st.stop()
+        render_chatbot(agent)
 
 
 # ── Routing ────────────────────────────────────────────────────────────────────
 
 query_params = st.query_params
 
-if is_authenticated():
-    # Already logged in — show main app (US1 acceptance scenario 3)
+# Handle AgentCore token-expiry signal — reactive re-login redirect
+if st.session_state.pop("agentcore_auth_expired", False):
+    clear_session()
+    show_landing(error_msg="Your session has expired, please log in again.")
+
+elif is_authenticated():
+    # Already logged in — show main app
     show_main_app()
 
 elif "error" in query_params:
-    # US2: Auth error callback — user cancelled or identity provider returned error
+    # Auth error callback — user cancelled or identity provider returned error
     error_code = query_params.get("error", "unknown_error")
     logger.info("Auth error callback received: %s", error_code)
     st.query_params.clear()
@@ -109,7 +141,7 @@ elif "error" in query_params:
     show_landing(error_msg="Login was cancelled or failed. Please try again.")
 
 elif "code" in query_params:
-    # US1: Authorization code callback — exchange code for tokens
+    # Authorization code callback — exchange code for tokens
     code = query_params["code"]
     state = query_params.get("state", "")
     st.query_params.clear()

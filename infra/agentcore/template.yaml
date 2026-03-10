@@ -1,0 +1,361 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  Strands Demo — AgentCore Runtime deployment stack.
+  Provisions ECR, IAM roles, CodeBuild image pipeline, and the AgentCore Runtime
+  secured with Cognito JWT authorizer. Accepts existing Cognito pool IDs as parameters.
+
+# ── Parameters ────────────────────────────────────────────────────────────────
+
+Parameters:
+
+  CognitoUserPoolId:
+    Type: String
+    Description: >
+      Cognito User Pool ID from the strands-demo-cognito stack (feature 002).
+      Format: <region>_XXXXXXXXX
+
+  CognitoClientId:
+    Type: String
+    Description: >
+      Cognito App Client ID from the strands-demo-cognito stack (feature 002).
+
+  CognitoRegion:
+    Type: String
+    Description: AWS region where the Cognito User Pool is deployed (e.g. us-east-1).
+
+  AnthropicApiKey:
+    Type: String
+    NoEcho: true
+    Description: >
+      Anthropic API key injected into the agent container as ANTHROPIC_API_KEY.
+      NOTE: For production, store in AWS Secrets Manager and reference via
+      {{resolve:secretsmanager:...}} instead of a plain parameter.
+
+  TavilyApiKey:
+    Type: String
+    NoEcho: true
+    Description: >
+      Tavily web search API key injected into the agent container as TAVILY_API_KEY.
+      NOTE: For production, store in AWS Secrets Manager and reference via
+      {{resolve:secretsmanager:...}} instead of a plain parameter.
+
+  BuildSourceBucket:
+    Type: String
+    Description: >
+      S3 bucket containing the source zip for the CodeBuild image build.
+      Upload the zip with: zip -r source.zip . --exclude '.venv/*' 'specs/*' '.git/*'
+
+  BuildSourceKey:
+    Type: String
+    Default: source.zip
+    Description: S3 object key of the source zip inside BuildSourceBucket.
+
+  ImageTag:
+    Type: String
+    Default: latest
+    Description: ECR image tag to deploy to the AgentCore Runtime.
+
+# ── Resources ─────────────────────────────────────────────────────────────────
+
+Resources:
+
+  # ── ECR Repository ──────────────────────────────────────────────────────────
+
+  ECRRepository:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: strands-demo-agent
+      # EmptyOnDelete ensures the repository (and its images) are removed
+      # when the CFN stack is deleted, preventing orphaned resources.
+      EmptyOnDelete: true
+    DeletionPolicy: Delete
+
+  # ── Agent Execution Role ─────────────────────────────────────────────────────
+
+  AgentExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "strands-demo-agentcore-execution-${AWS::Region}"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: bedrock-agentcore.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: CloudWatchLogs
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: CloudWatchLogs
+                Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                  - logs:DescribeLogGroups
+                  - logs:DescribeLogStreams
+                Resource: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/bedrock-agentcore/runtimes/*"
+        - PolicyName: XRayTracing
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: XRayTracing
+                Effect: Allow
+                Action:
+                  - xray:PutTraceSegments
+                  - xray:PutTelemetryRecords
+                  - xray:GetSamplingRules
+                  - xray:GetSamplingTargets
+                Resource: "*"
+        - PolicyName: CloudWatchMetrics
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: CloudWatchMetrics
+                Effect: Allow
+                Action: cloudwatch:PutMetricData
+                Resource: "*"
+                Condition:
+                  StringEquals:
+                    cloudwatch:namespace: bedrock-agentcore
+        - PolicyName: ECRPull
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: ECRPull
+                Effect: Allow
+                Action:
+                  - ecr:GetAuthorizationToken
+                  - ecr:BatchCheckLayerAvailability
+                  - ecr:GetDownloadUrlForLayer
+                  - ecr:BatchGetImage
+                Resource: "*"
+
+  # ── CodeBuild Role ───────────────────────────────────────────────────────────
+
+  CodeBuildRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "strands-demo-agentcore-codebuild-${AWS::Region}"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: codebuild.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: ECRPush
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: ECRPush
+                Effect: Allow
+                Action:
+                  - ecr:GetAuthorizationToken
+                  - ecr:BatchCheckLayerAvailability
+                  - ecr:InitiateLayerUpload
+                  - ecr:UploadLayerPart
+                  - ecr:CompleteLayerUpload
+                  - ecr:PutImage
+                  - ecr:BatchGetImage
+                  - ecr:GetDownloadUrlForLayer
+                Resource: "*"
+        - PolicyName: CloudWatchLogsForBuild
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: CodeBuildLogs
+                Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/strands-demo-agent-build*"
+        - PolicyName: S3SourceAccess
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: S3Source
+                Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:GetObjectVersion
+                Resource: !Sub "arn:aws:s3:::${BuildSourceBucket}/${BuildSourceKey}"
+
+  # ── CodeBuild Project ────────────────────────────────────────────────────────
+
+  AgentImageBuild:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: strands-demo-agent-build
+      ServiceRole: !GetAtt CodeBuildRole.Arn
+      Environment:
+        Type: ARM_CONTAINER
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/amazonlinux2-aarch64-standard:3.0
+        PrivilegedMode: true
+        EnvironmentVariables:
+          - Name: ECR_REPO_URI
+            Value: !GetAtt ECRRepository.RepositoryUri
+          - Name: IMAGE_TAG
+            Value: !Ref ImageTag
+          - Name: AWS_DEFAULT_REGION
+            Value: !Ref AWS::Region
+          - Name: AWS_ACCOUNT_ID
+            Value: !Ref AWS::AccountId
+      Source:
+        Type: S3
+        Location: !Sub "${BuildSourceBucket}/${BuildSourceKey}"
+        BuildSpec: |
+          version: 0.2
+          phases:
+            pre_build:
+              commands:
+                - echo "Logging in to Amazon ECR..."
+                - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com
+            build:
+              commands:
+                - echo "Building ARM64 container image..."
+                - docker build --platform linux/arm64 -t $ECR_REPO_URI:$IMAGE_TAG -f infra/agentcore/Dockerfile .
+            post_build:
+              commands:
+                - echo "Pushing image to ECR..."
+                - docker push $ECR_REPO_URI:$IMAGE_TAG
+                - echo "Build completed successfully."
+      Artifacts:
+        Type: NO_ARTIFACTS
+      LogsConfig:
+        CloudWatchLogs:
+          GroupName: !Sub "/aws/codebuild/strands-demo-agent-build"
+          Status: ENABLED
+
+  # ── Lambda Build Trigger ─────────────────────────────────────────────────────
+
+  BuildTriggerLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "strands-demo-build-trigger-${AWS::Region}"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: CodeBuildTrigger
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - codebuild:StartBuild
+                  - codebuild:BatchGetBuilds
+                Resource: !GetAtt AgentImageBuild.Arn
+
+  BuildTriggerLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: strands-demo-build-trigger
+      Runtime: python3.11
+      Role: !GetAtt BuildTriggerLambdaRole.Arn
+      Handler: index.handler
+      Timeout: 900
+      Code:
+        ZipFile: |
+          import boto3
+          import cfnresponse
+          import time
+
+          cb = boto3.client("codebuild")
+
+          def handler(event, context):
+              if event["RequestType"] == "Delete":
+                  cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
+                  return
+
+              project_name = event["ResourceProperties"]["ProjectName"]
+              try:
+                  build = cb.start_build(projectName=project_name)
+                  build_id = build["build"]["id"]
+                  print(f"Started build: {build_id}")
+
+                  while True:
+                      time.sleep(30)
+                      result = cb.batch_get_builds(ids=[build_id])
+                      build_status = result["builds"][0]["buildStatus"]
+                      print(f"Build status: {build_status}")
+
+                      if build_status == "SUCCEEDED":
+                          cfnresponse.send(event, context, cfnresponse.SUCCESS,
+                                           {"BuildId": build_id})
+                          return
+                      elif build_status in ("FAILED", "FAULT", "TIMED_OUT", "STOPPED"):
+                          cfnresponse.send(event, context, cfnresponse.FAILED,
+                                           {"Reason": f"Build {build_status}: {build_id}"})
+                          return
+              except Exception as exc:
+                  print(f"Error: {exc}")
+                  cfnresponse.send(event, context, cfnresponse.FAILED,
+                                   {"Reason": str(exc)})
+
+  TriggerImageBuild:
+    Type: AWS::CloudFormation::CustomResource
+    DependsOn: AgentImageBuild
+    Properties:
+      ServiceToken: !GetAtt BuildTriggerLambda.Arn
+      ProjectName: !Ref AgentImageBuild
+
+  # ── AgentCore Runtime ─────────────────────────────────────────────────────────
+
+  AgentRuntime:
+    Type: AWS::BedrockAgentCore::Runtime
+    DependsOn: TriggerImageBuild
+    Properties:
+      AgentRuntimeName: strands_demo_agent
+      Description: Strands reasoning chatbot with Tavily web search, secured by Cognito JWT
+      AgentRuntimeArtifact:
+        ContainerConfiguration:
+          ContainerUri: !Sub "${ECRRepository.RepositoryUri}:${ImageTag}"
+      RoleArn: !GetAtt AgentExecutionRole.Arn
+      NetworkConfiguration:
+        NetworkMode: PUBLIC
+      ProtocolConfiguration: HTTP
+      AuthorizerConfiguration:
+        CustomJWTAuthorizer:
+          DiscoveryUrl: !Sub "https://cognito-idp.${CognitoRegion}.amazonaws.com/${CognitoUserPoolId}/.well-known/openid-configuration"
+          AllowedClients:
+            - !Ref CognitoClientId
+      EnvironmentVariables:
+        ANTHROPIC_API_KEY: !Ref AnthropicApiKey
+        TAVILY_API_KEY: !Ref TavilyApiKey
+        LOG_LEVEL: INFO
+
+# ── Outputs ───────────────────────────────────────────────────────────────────
+
+Outputs:
+
+  AgentRuntimeArn:
+    Description: >
+      Full ARN of the deployed AgentCore Runtime.
+      Set as AGENTCORE_RUNTIME_ARN in the Streamlit app .env file.
+    Value: !GetAtt AgentRuntime.AgentRuntimeArn
+    Export:
+      Name: !Sub "${AWS::StackName}-AgentRuntimeArn"
+
+  AgentRuntimeId:
+    Description: Short runtime ID — use to find CloudWatch log group /aws/bedrock-agentcore/runtimes/{ID}-DEFAULT
+    Value: !GetAtt AgentRuntime.AgentRuntimeId
+    Export:
+      Name: !Sub "${AWS::StackName}-AgentRuntimeId"
+
+  ECRRepositoryUri:
+    Description: ECR repository URI for subsequent image pushes / CI/CD pipelines.
+    Value: !GetAtt ECRRepository.RepositoryUri
+    Export:
+      Name: !Sub "${AWS::StackName}-ECRRepositoryUri"

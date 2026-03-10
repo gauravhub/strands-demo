@@ -1,0 +1,53 @@
+# Docker build context exclusions
+# Build context is the repository root; only include what the container needs.
+
+# Python cache
+__pycache__/
+*.py[cod]
+*.pyc
+*.pyo
+
+# Virtual environments — never include in image
+.venv/
+venv/
+env/
+.uv/
+
+# Secrets and environment files
+.env
+.env.*
+*.pem
+*.key
+
+# Spec and documentation — not needed in the container
+specs/
+*.md
+!infra/agentcore/requirements-agent.txt
+
+# Tests — not needed at runtime
+tests/
+
+# Git
+.git/
+.gitignore
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS artefacts
+.DS_Store
+Thumbs.db
+
+# Build outputs
+dist/
+build/
+*.egg-info/
+
+# Logs
+*.log
+logs/
+
+# uv lock (not needed in container)
+uv.lock

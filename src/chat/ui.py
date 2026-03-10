@@ -1,10 +1,16 @@
 """Streamlit chatbot UI — streaming display, session state, and rendering."""
 
+from __future__ import annotations
+
 import asyncio
 import logging
+from typing import TYPE_CHECKING
 
 import streamlit as st
 from strands import Agent
+
+if TYPE_CHECKING:
+    from src.agentcore.config import AgentCoreConfig
 
 logger = logging.getLogger(__name__)
 
@@ -232,3 +238,144 @@ def render_chatbot(agent: Agent) -> None:
     init_session()
     render_chat_history()
     render_input(agent)
+
+
+# ── AgentCore SSE variant ──────────────────────────────────────────────────────
+
+
+def _stream_turn_agentcore(
+    config: "AgentCoreConfig",
+    access_token: str,
+    session_id: str,
+    user_message: str,
+) -> None:
+    """Run one streaming turn via AgentCore HTTP SSE, updating session state."""
+    from src.agentcore.client import (
+        AgentCoreAuthError,
+        AgentCoreError,
+        invoke_streaming,
+    )
+
+    msg: dict = {
+        "role": "assistant",
+        "content": "",
+        "reasoning": "",
+        "tool_calls": [],
+        "error": None,
+    }
+    st.session_state.messages.append(msg)
+
+    with st.chat_message("assistant"):
+        reasoning_placeholder = st.empty()
+        tools_placeholder = st.empty()
+        response_placeholder = st.empty()
+
+    logger.info("AgentCore stream start: session_id=%s prompt_len=%d", session_id, len(user_message))
+
+    try:
+        for event in invoke_streaming(
+            runtime_arn=config.runtime_arn,
+            region=config.region,
+            qualifier=config.qualifier,
+            session_id=session_id,
+            access_token=access_token,
+            prompt=user_message,
+        ):
+            event_type = event.get("type")
+
+            if event_type == "text":
+                msg["content"] += event.get("data", "")
+                response_placeholder.markdown(msg["content"])
+
+            elif event_type == "reasoning":
+                msg["reasoning"] += event.get("data", "")
+                reasoning_placeholder.expander("🔍 Reasoning", expanded=True).markdown(
+                    msg["reasoning"]
+                )
+
+            elif event_type == "tool_start":
+                tool_use_id = event.get("tool_use_id", "")
+                existing = next(
+                    (t for t in msg["tool_calls"] if t["tool_use_id"] == tool_use_id),
+                    None,
+                )
+                if existing is None:
+                    msg["tool_calls"].append({
+                        "tool_use_id": tool_use_id,
+                        "name": event.get("name", ""),
+                        "input": event.get("input", {}),
+                        "result": None,
+                    })
+                else:
+                    existing["input"] = event.get("input", existing["input"])
+                _render_tools_live(msg["tool_calls"], tools_placeholder)
+
+            elif event_type == "tool_result":
+                tool_use_id = event.get("tool_use_id", "")
+                result_text = event.get("result", "")
+                matched = False
+                for tc in msg["tool_calls"]:
+                    if tc["tool_use_id"] == tool_use_id:
+                        tc["result"] = result_text
+                        matched = True
+                        break
+                if not matched:
+                    for tc in msg["tool_calls"]:
+                        if tc["result"] is None:
+                            tc["result"] = result_text
+                            break
+                _render_tools_live(msg["tool_calls"], tools_placeholder)
+
+            elif event_type == "error":
+                msg["error"] = f"⚠️ Agent error: {event.get('message', 'Unknown error')}"
+                response_placeholder.markdown(
+                    (msg["content"] or "") + "\n\n" + msg["error"]
+                )
+
+            elif event_type == "done":
+                break
+
+    except AgentCoreAuthError:
+        # Signal to app.py that the session has expired — it will clear + redirect
+        logger.info("AgentCore auth expired: session_id=%s", session_id)
+        st.session_state["agentcore_auth_expired"] = True
+        st.rerun()
+
+    except Exception as exc:
+        logger.error("AgentCore stream error: session_id=%s", session_id, exc_info=True)
+        user_msg = str(exc)
+        if "timed out" in user_msg.lower() or "timeout" in user_msg.lower():
+            user_msg = "The agent took too long to respond. Please try again with a shorter query."
+        elif "unavailable" in user_msg.lower():
+            user_msg = "The agent service is temporarily unavailable. Please try again in a moment."
+        msg["error"] = f"⚠️ {user_msg}"
+        response_placeholder.markdown((msg["content"] or "") + "\n\n" + msg["error"])
+
+
+def render_chatbot_agentcore(
+    config: "AgentCoreConfig",
+    access_token: str,
+    session_id: str,
+) -> None:
+    """AgentCore chatbot entry point — streams via HTTP SSE with Cognito Bearer token.
+
+    Args:
+        config: AgentCore endpoint configuration (ARN, region, qualifier).
+        access_token: Cognito access token — forwarded as Bearer to AgentCore.
+        session_id: UUID v4 session identifier (≥33 chars), per browser tab.
+    """
+    init_session()
+    render_chat_history()
+
+    user_message = st.chat_input(
+        "Message…",
+        disabled=st.session_state.is_streaming,
+    )
+    if user_message:
+        st.session_state.messages.append({"role": "user", "content": user_message})
+        st.session_state.is_streaming = True
+        try:
+            _stream_turn_agentcore(config, access_token, session_id, user_message)
+        finally:
+            st.session_state.is_streaming = False
+        st.rerun()

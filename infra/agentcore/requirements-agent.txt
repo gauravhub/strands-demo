@@ -1,0 +1,12 @@
+# Container-only dependencies for the AgentCore Runtime agent image.
+# This file is used exclusively by the Dockerfile (infra/agentcore/Dockerfile).
+# Do NOT add these to pyproject.toml — they are not needed by the Streamlit host.
+
+strands-agents>=0.1.0
+strands-agents-tools>=0.1.0
+bedrock-agentcore>=0.1.0
+anthropic>=0.40.0
+python-dotenv>=1.0.0
+# OTEL auto-instrumentation — required so the Dockerfile CMD
+# (`opentelemetry-instrument python app.py`) is available at container startup.
+aws-opentelemetry-distro>=0.10.1
