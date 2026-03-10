@@ -1,0 +1,33 @@
+{
+  "schema_version": "1.0",
+  "extensions": {
+    "fleet": {
+      "version": "1.0.0",
+      "source": "local",
+      "manifest_hash": "sha256:0397699f61f925ec5745bb32af24420328b1ad27b45770b2c9b241fe84eafdb3",
+      "enabled": true,
+      "registered_commands": {
+        "claude": [
+          "speckit.fleet.run",
+          "speckit.fleet",
+          "speckit.fleet.review",
+          "speckit.review"
+        ]
+      },
+      "installed_at": "2026-03-10T15:27:39.844125+00:00"
+    },
+    "verify": {
+      "version": "1.0.0",
+      "source": "local",
+      "manifest_hash": "sha256:4baa329349fffb5598a7bd41f958cf193aac77dd624c1c64799de052995ca29a",
+      "enabled": true,
+      "registered_commands": {
+        "claude": [
+          "speckit.verify.run",
+          "speckit.verify"
+        ]
+      },
+      "installed_at": "2026-03-10T15:29:54.516076+00:00"
+    }
+  }
+}
