@@ -75,7 +75,24 @@ def show_main_app() -> None:
     """Render the main application view for authenticated users."""
     user = get_user()
     st.title("🤖 Strands Demo")
-    st.caption(f"Logged in as **{user.get('username', 'unknown')}**")
+
+    if _agentcore_config:
+        # AgentCore mode — forward Cognito token to the managed Runtime endpoint
+        session_id = st.session_state.setdefault(
+            "agentcore_session_id", str(uuid.uuid4())
+        )
+        mode_label = "AgentCore"
+    else:
+        session_id = st.session_state.setdefault(
+            "local_session_id", str(uuid.uuid4())
+        )
+        mode_label = "Local"
+
+    st.caption(
+        f"Logged in as **{user.get('username', 'unknown')}** · "
+        f"Mode: **{mode_label}** · "
+        f"Session: `{session_id[:8]}…`"
+    )
 
     logout_url = (
         f"{config.logout_endpoint}"
@@ -89,10 +106,6 @@ def show_main_app() -> None:
     st.divider()
 
     if _agentcore_config:
-        # AgentCore mode — forward Cognito token to the managed Runtime endpoint
-        session_id = st.session_state.setdefault(
-            "agentcore_session_id", str(uuid.uuid4())
-        )
         render_chatbot_agentcore(
             config=_agentcore_config,
             access_token=user["access_token"],
