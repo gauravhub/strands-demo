@@ -55,6 +55,12 @@ Parameters:
     Default: latest
     Description: ECR image tag to deploy to the AgentCore Runtime.
 
+  EksMcpRegion:
+    Type: String
+    Default: ""
+    Description: >
+      Region for EKS MCP Server. Leave empty to auto-detect from deployment region.
+
 # ── Resources ─────────────────────────────────────────────────────────────────
 
 Resources:
@@ -131,6 +137,51 @@ Resources:
                   - ecr:BatchCheckLayerAvailability
                   - ecr:GetDownloadUrlForLayer
                   - ecr:BatchGetImage
+                Resource: "*"
+        - PolicyName: EksMcpAccess
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: EksMcpAccess
+                Effect: Allow
+                Action:
+                  - eks-mcp:InvokeMcp
+                  - eks-mcp:CallReadOnlyTool
+                Resource: "*"
+        - PolicyName: EksReadAccess
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: EksReadAccess
+                Effect: Allow
+                Action:
+                  - eks:DescribeCluster
+                  - eks:ListClusters
+                  - eks:ListNodegroups
+                  - eks:DescribeNodegroup
+                  - eks:ListAddons
+                  - eks:DescribeAddon
+                  - eks:ListAccessEntries
+                  - eks:DescribeAccessEntry
+                  - eks:AccessKubernetesApi
+                  - eks:DescribeInsight
+                  - eks:ListInsights
+                Resource: "*"
+        - PolicyName: EksSupportingReadAccess
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: EksSupportingReadAccess
+                Effect: Allow
+                Action:
+                  - logs:StartQuery
+                  - logs:GetQueryResults
+                  - cloudwatch:GetMetricData
+                  - sts:GetCallerIdentity
+                  - iam:GetRole
+                  - iam:ListAttachedRolePolicies
+                  - iam:ListRolePolicies
+                  - iam:GetRolePolicy
                 Resource: "*"
 
   # ── CodeBuild Role ───────────────────────────────────────────────────────────
@@ -347,7 +398,7 @@ Resources:
     DependsOn: TriggerImageBuild
     Properties:
       AgentRuntimeName: strands_demo_agent
-      Description: Strands reasoning chatbot with Tavily web search, secured by Cognito JWT
+      Description: Strands reasoning chatbot with Tavily web search and EKS MCP tools, secured by Cognito JWT
       AgentRuntimeArtifact:
         ContainerConfiguration:
           ContainerUri: !Sub "${ECRRepository.RepositoryUri}:${ImageTag}"
@@ -364,6 +415,7 @@ Resources:
         ANTHROPIC_API_KEY: !Ref AnthropicApiKey
         TAVILY_API_KEY: !Ref TavilyApiKey
         LOG_LEVEL: INFO
+        EKS_MCP_REGION: !Ref EksMcpRegion
 
 # ── Outputs ───────────────────────────────────────────────────────────────────
 
