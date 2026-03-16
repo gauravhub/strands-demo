@@ -15,6 +15,8 @@ Auto-generated from all feature plans. Last updated: 2026-03-09
 - Python 3.11+ + strands-agents>=0.1.0, mcp-proxy-for-aws (new), strands-agents-tools>=0.1.0 (007-eks-mcp-server)
 - N/A — stateless, no persistent data (007-eks-mcp-server)
 - Python 3.11+ + strands-agents>=0.1.0, strands-agents-tools>=0.1.0, mcp-proxy-for-aws>=1.0.0, bedrock-agentcore>=0.1.0, anthropic>=0.40.0, boto3 (008-aws-api-mcp-server)
+- Python 3.11+ + strands-agents>=0.1.0, bedrock-agentcore>=0.1.0 (already in requirements-agent.txt), boto3 (009-agentcore-memory)
+- AgentCore Memory (managed service) — short-term events + long-term extracted records (009-agentcore-memory)
 
 - Python 3.11+ + `strands-agents`, `strands-agents-tools`, `streamlit`, `boto3`, (001-python-env-bootstrap)
 
@@ -34,9 +36,9 @@ cd src [ONLY COMMANDS FOR ACTIVE TECHNOLOGIES][ONLY COMMANDS FOR ACTIVE TECHNOLO
 Python 3.11+: Follow standard conventions
 
 ## Recent Changes
+- 009-agentcore-memory: Added Python 3.11+ + strands-agents>=0.1.0, bedrock-agentcore>=0.1.0 (already in requirements-agent.txt), boto3
 - 008-aws-api-mcp-server: Added Python 3.11+ + strands-agents>=0.1.0, strands-agents-tools>=0.1.0, mcp-proxy-for-aws>=1.0.0, bedrock-agentcore>=0.1.0, anthropic>=0.40.0, boto3
 - 007-eks-mcp-server: Added Python 3.11+ + strands-agents>=0.1.0, mcp-proxy-for-aws (new), strands-agents-tools>=0.1.0
-- 006-agentcore-observability: Added Python 3.11+ + `strands-agents[otel]>=0.1.0`, `aws-opentelemetry-distro>=0.10.1`, `boto3>=1.34.0`, AWS CLI v2
 
 
 <!-- MANUAL ADDITIONS START -->
