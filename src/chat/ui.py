@@ -282,6 +282,7 @@ def _stream_turn_agentcore(
             access_token=access_token,
             prompt=user_message,
             username=username,
+            access_token_raw=access_token,
         ):
             event_type = event.get("type")
 

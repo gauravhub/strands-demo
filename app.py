@@ -23,13 +23,16 @@ log_level = getattr(logging, os.getenv("LOG_LEVEL", "INFO").upper(), logging.INF
 logging.basicConfig(level=log_level)
 
 # Validate required env vars before anything else
-_missing = [k for k in ("ANTHROPIC_API_KEY", "TAVILY_API_KEY") if not os.getenv(k)]
+_missing = [k for k in ("ANTHROPIC_API_KEY",) if not os.getenv(k)]
 if _missing:
     st.error(
         f"Missing required environment variables: {', '.join(_missing)}. "
         "Add them to your .env file and restart."
     )
     st.stop()
+
+# Gateway configuration — optional; when set, Tavily tools are loaded from Gateway.
+_gateway_url = os.getenv("AGENTCORE_GATEWAY_URL", "")
 
 try:
     config = load_config()
@@ -121,6 +124,8 @@ def show_main_app() -> None:
                 memory_id=memory_id or None,
                 session_id=session_id,
                 actor_id=user["username"],
+                gateway_url=_gateway_url or None,
+                access_token=user["access_token"] if _gateway_url else None,
             )
         except EnvironmentError as e:
             st.error(str(e))
