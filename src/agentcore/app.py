@@ -15,7 +15,7 @@ from bedrock_agentcore.runtime import BedrockAgentCoreApp
 from strands import Agent
 from strands_tools import tavily
 
-from src.agent.mcp_tools import get_eks_mcp_tools
+from src.agent.mcp_tools import get_aws_api_mcp_tools, get_eks_mcp_tools
 from src.agent.model import create_model
 
 logger = logging.getLogger(__name__)
@@ -104,17 +104,21 @@ async def invoke(
         len(prompt),
     )
 
-    # Load EKS MCP tools before entering the async generator to avoid
+    # Load MCP tools before entering the async generator to avoid
     # blocking the event loop with list_tools_sync() inside the generator.
-    mcp_client, eks_tools = get_eks_mcp_tools()
+    eks_client, eks_tools = get_eks_mcp_tools()
     if eks_tools:
         logger.info("EKS MCP tools loaded: count=%d", len(eks_tools))
     else:
-        logger.warning(
-            "EKS MCP tools not available — agent will operate with Tavily only"
-        )
+        logger.warning("EKS MCP tools not available")
 
-    tools = [tavily, *eks_tools]
+    aws_api_client, aws_api_tools = get_aws_api_mcp_tools()
+    if aws_api_tools:
+        logger.info("AWS API MCP tools loaded: count=%d", len(aws_api_tools))
+    else:
+        logger.warning("AWS API MCP tools not available")
+
+    tools = [tavily, *eks_tools, *aws_api_tools]
 
     text_events = 0
     tool_call_count = 0
@@ -160,11 +164,16 @@ async def invoke(
             tool_call_count,
             error_count,
         )
-        if mcp_client is not None:
+        if eks_client is not None:
             try:
-                mcp_client.__exit__(None, None, None)
+                eks_client.__exit__(None, None, None)
             except Exception:
                 logger.warning("Failed to close EKS MCP client", exc_info=True)
+        if aws_api_client is not None:
+            try:
+                aws_api_client.__exit__(None, None, None)
+            except Exception:
+                logger.warning("Failed to close AWS API MCP client", exc_info=True)
 
     yield {"type": "done"}
 
