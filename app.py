@@ -105,17 +105,23 @@ def show_main_app() -> None:
 
     st.divider()
 
+    memory_id = os.getenv("AGENTCORE_MEMORY_ID", "")
+
     if _agentcore_config:
         render_chatbot_agentcore(
             config=_agentcore_config,
             access_token=user["access_token"],
             session_id=session_id,
+            username=user["username"],
         )
     else:
         # Local fallback mode — run agent in-process (feature 003 behaviour)
-        # Verify FR-011: existing flow is unchanged when AGENTCORE_RUNTIME_ARN is unset
         try:
-            agent, _mcp_clients = create_agent()
+            agent, _mcp_clients, _session_mgr = create_agent(
+                memory_id=memory_id or None,
+                session_id=session_id,
+                actor_id=user["username"],
+            )
         except EnvironmentError as e:
             st.error(str(e))
             st.stop()

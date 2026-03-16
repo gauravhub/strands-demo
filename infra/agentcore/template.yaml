@@ -410,6 +410,35 @@ Resources:
       RetentionInDays: 30
     DeletionPolicy: Delete
 
+  # ── AgentCore Memory ─────────────────────────────────────────────────────────
+
+  AgentCoreMemory:
+    Type: AWS::BedrockAgentCore::Memory
+    Properties:
+      Name: strands_demo_memory
+      Description: Long-term memory for Strands Demo agent — preferences, facts, summaries, episodes
+      EventExpiryDuration: 90
+      MemoryStrategies:
+        - SummaryMemoryStrategy:
+            Name: SessionSummarizer
+            Namespaces:
+              - "summaries/{actorId}/{sessionId}"
+        - UserPreferenceMemoryStrategy:
+            Name: PreferenceLearner
+            Namespaces:
+              - "preferences/{actorId}"
+        - SemanticMemoryStrategy:
+            Name: FactExtractor
+            Namespaces:
+              - "facts/{actorId}"
+        - EpisodicMemoryStrategy:
+            Name: EpisodeTracker
+            Namespaces:
+              - "episodes/actor/{actorId}/sessions/{sessionId}"
+            ReflectionConfiguration:
+              Namespaces:
+                - "episodes/actor/{actorId}"
+
   # ── AgentCore Runtime ─────────────────────────────────────────────────────────
 
   AgentRuntime:
@@ -436,6 +465,7 @@ Resources:
         LOG_LEVEL: INFO
         EKS_MCP_REGION: !Ref EksMcpRegion
         AWS_MCP_REGION: !Ref AwsMcpRegion
+        AGENTCORE_MEMORY_ID: !GetAtt AgentCoreMemory.MemoryId
 
 # ── Outputs ───────────────────────────────────────────────────────────────────
 
@@ -454,6 +484,12 @@ Outputs:
     Value: !GetAtt AgentRuntime.AgentRuntimeId
     Export:
       Name: !Sub "${AWS::StackName}-AgentRuntimeId"
+
+  AgentCoreMemoryId:
+    Description: AgentCore Memory resource ID — set as AGENTCORE_MEMORY_ID in .env for local mode.
+    Value: !GetAtt AgentCoreMemory.MemoryId
+    Export:
+      Name: !Sub "${AWS::StackName}-AgentCoreMemoryId"
 
   ECRRepositoryUri:
     Description: ECR repository URI for subsequent image pushes / CI/CD pipelines.

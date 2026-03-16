@@ -248,6 +248,7 @@ def _stream_turn_agentcore(
     access_token: str,
     session_id: str,
     user_message: str,
+    username: str = "",
 ) -> None:
     """Run one streaming turn via AgentCore HTTP SSE, updating session state."""
     from src.agentcore.client import (
@@ -280,6 +281,7 @@ def _stream_turn_agentcore(
             session_id=session_id,
             access_token=access_token,
             prompt=user_message,
+            username=username,
         ):
             event_type = event.get("type")
 
@@ -356,6 +358,7 @@ def render_chatbot_agentcore(
     config: "AgentCoreConfig",
     access_token: str,
     session_id: str,
+    username: str = "",
 ) -> None:
     """AgentCore chatbot entry point — streams via HTTP SSE with Cognito Bearer token.
 
@@ -363,6 +366,7 @@ def render_chatbot_agentcore(
         config: AgentCore endpoint configuration (ARN, region, qualifier).
         access_token: Cognito access token — forwarded as Bearer to AgentCore.
         session_id: UUID v4 session identifier (≥33 chars), per browser tab.
+        username: Cognito username — passed to agent for memory actor_id.
     """
     init_session()
     render_chat_history()
@@ -375,7 +379,7 @@ def render_chatbot_agentcore(
         st.session_state.messages.append({"role": "user", "content": user_message})
         st.session_state.is_streaming = True
         try:
-            _stream_turn_agentcore(config, access_token, session_id, user_message)
+            _stream_turn_agentcore(config, access_token, session_id, user_message, username)
         finally:
             st.session_state.is_streaming = False
         st.rerun()
