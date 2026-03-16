@@ -114,9 +114,9 @@ async def invoke(
 
     aws_api_client, aws_api_tools = get_aws_api_mcp_tools()
     if aws_api_tools:
-        logger.info("AWS API MCP tools loaded: count=%d", len(aws_api_tools))
+        logger.info("AWS MCP tools loaded: count=%d", len(aws_api_tools))
     else:
-        logger.warning("AWS API MCP tools not available")
+        logger.warning("AWS MCP tools not available")
 
     tools = [tavily, *eks_tools, *aws_api_tools]
 
@@ -173,7 +173,7 @@ async def invoke(
             try:
                 aws_api_client.__exit__(None, None, None)
             except Exception:
-                logger.warning("Failed to close AWS API MCP client", exc_info=True)
+                logger.warning("Failed to close AWS MCP client", exc_info=True)
 
     yield {"type": "done"}
 

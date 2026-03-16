@@ -44,15 +44,15 @@ def create_agent() -> tuple[Agent, list]:
     if aws_api_client is not None:
         mcp_clients.append(aws_api_client)
     if aws_api_tools:
-        logger.info("AWS API MCP tools loaded: count=%d", len(aws_api_tools))
+        logger.info("AWS MCP tools loaded: count=%d", len(aws_api_tools))
     else:
-        logger.warning("AWS API MCP tools not available")
+        logger.warning("AWS MCP tools not available")
 
     try:
         tools = [tavily, *eks_tools, *aws_api_tools]
         agent = Agent(model=create_model(), tools=tools)
         logger.info(
-            "Strands Agent created: tools=[tavily + %d EKS MCP + %d AWS API MCP]",
+            "Strands Agent created: tools=[tavily + %d EKS MCP + %d AWS MCP]",
             len(eks_tools),
             len(aws_api_tools),
         )

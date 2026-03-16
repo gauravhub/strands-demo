@@ -68,10 +68,10 @@ def get_eks_mcp_tools() -> tuple[Any | None, list]:
 
 
 def get_aws_api_mcp_tools() -> tuple[Any | None, list]:
-    """Load AWS API MCP tools from the AWS-managed AWS API MCP Server.
+    """Load AWS MCP tools from the managed AWS MCP Server.
 
     Resolves the region from environment variables in order:
-        AWS_API_MCP_REGION → AWS_REGION → AWS_DEFAULT_REGION
+        AWS_MCP_REGION → AWS_REGION → AWS_DEFAULT_REGION
 
     Returns:
         Tuple of (mcp_client, tools_list). The caller is responsible for
@@ -79,19 +79,19 @@ def get_aws_api_mcp_tools() -> tuple[Any | None, list]:
         ``(None, [])``.
     """
     region = (
-        os.getenv("AWS_API_MCP_REGION")
+        os.getenv("AWS_MCP_REGION")
         or os.getenv("AWS_REGION")
         or os.getenv("AWS_DEFAULT_REGION")
     )
     if not region:
         logger.warning(
-            "No AWS region configured for AWS API MCP Server "
-            "(set AWS_API_MCP_REGION, AWS_REGION, or AWS_DEFAULT_REGION). "
-            "AWS API tools will not be available."
+            "No AWS region configured for AWS MCP Server "
+            "(set AWS_MCP_REGION, AWS_REGION, or AWS_DEFAULT_REGION). "
+            "AWS MCP tools will not be available."
         )
         return None, []
 
-    endpoint = f"https://aws-api.{region}.api.aws/mcp"
+    endpoint = f"https://aws-mcp.{region}.api.aws/mcp"
 
     try:
         from mcp_proxy_for_aws.client import aws_iam_streamablehttp_client
@@ -100,7 +100,7 @@ def get_aws_api_mcp_tools() -> tuple[Any | None, list]:
         mcp_factory = lambda: aws_iam_streamablehttp_client(
             endpoint=endpoint,
             aws_region=region,
-            aws_service="aws-api",
+            aws_service="aws-mcp",
         )
 
         mcp_client = MCPClient(mcp_factory)
@@ -108,7 +108,7 @@ def get_aws_api_mcp_tools() -> tuple[Any | None, list]:
 
         tools = mcp_client.list_tools_sync()
         logger.info(
-            "AWS API MCP tools loaded: region=%s endpoint=%s tool_count=%d",
+            "AWS MCP tools loaded: region=%s endpoint=%s tool_count=%d",
             region,
             endpoint,
             len(tools),
@@ -117,8 +117,8 @@ def get_aws_api_mcp_tools() -> tuple[Any | None, list]:
 
     except Exception:
         logger.warning(
-            "Failed to connect to AWS API MCP Server at %s — "
-            "AWS API tools will not be available",
+            "Failed to connect to AWS MCP Server at %s — "
+            "AWS MCP tools will not be available",
             endpoint,
             exc_info=True,
         )

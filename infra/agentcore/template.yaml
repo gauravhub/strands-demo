@@ -61,11 +61,11 @@ Parameters:
     Description: >
       Region for EKS MCP Server. Leave empty to auto-detect from deployment region.
 
-  AwsApiMcpRegion:
+  AwsMcpRegion:
     Type: String
     Default: ""
     Description: >
-      Region for AWS API MCP Server. Leave empty to auto-detect from deployment region.
+      Region for AWS MCP Server. Leave empty to auto-detect from deployment region.
 
 # ── Resources ─────────────────────────────────────────────────────────────────
 
@@ -95,6 +95,8 @@ Resources:
             Principal:
               Service: bedrock-agentcore.amazonaws.com
             Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AdministratorAccess
       Policies:
         - PolicyName: CloudWatchLogs
           PolicyDocument:
@@ -189,14 +191,16 @@ Resources:
                   - iam:ListRolePolicies
                   - iam:GetRolePolicy
                 Resource: "*"
-        - PolicyName: AwsApiMcpAccess
+        - PolicyName: AwsMcpAccess
           PolicyDocument:
             Version: "2012-10-17"
             Statement:
-              - Sid: AwsApiMcpAccess
+              - Sid: AwsMcpAccess
                 Effect: Allow
                 Action:
-                  - aws-api:InvokeMcp
+                  - aws-mcp:InvokeMcp
+                  - aws-mcp:CallReadOnlyTool
+                  - aws-mcp:CallReadWriteTool
                 Resource: "*"
 
   # ── CodeBuild Role ───────────────────────────────────────────────────────────
@@ -431,7 +435,7 @@ Resources:
         TAVILY_API_KEY: !Ref TavilyApiKey
         LOG_LEVEL: INFO
         EKS_MCP_REGION: !Ref EksMcpRegion
-        AWS_API_MCP_REGION: !Ref AwsApiMcpRegion
+        AWS_MCP_REGION: !Ref AwsMcpRegion
 
 # ── Outputs ───────────────────────────────────────────────────────────────────
 
