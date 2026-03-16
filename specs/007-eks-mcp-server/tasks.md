@@ -95,6 +95,24 @@
 
 ---
 
+## Phase 7: Deployment & End-to-End Verification
+
+**Purpose**: Deploy the updated code and infrastructure to AgentCore, force the Runtime to pull the new container image, and verify the deployed agent works end-to-end with EKS MCP tools.
+
+**CRITICAL**: This phase ensures the feature is actually running in production, not just code-complete. Without these steps, the AgentCore Runtime continues running the old container image even after code is merged and CloudFormation is updated, because the `ContainerUri` uses a `latest` tag that doesn't change.
+
+<!-- sequential -->
+- [ ] T013 Grant the AgentCore execution role Kubernetes API access on EKS cluster(s) — the IAM permission `eks:AccessKubernetesApi` alone is NOT sufficient; the EKS cluster must also authorize the role. Add an EKS access entry for the AgentCore execution role using CloudFormation (preferred) or AWS CLI. Use `AWS::EKS::AccessEntry` resource in infra/agentcore/template.yaml with the AgentExecutionRole ARN as the principal, and associate it with an `AmazonEKSViewPolicy` access policy (or `AmazonEKSClusterAdminPolicy` for full read access) via `AWS::EKS::AccessPolicy`. If the cluster name is not known at stack creation time, add a new `EksClusterName` parameter (Type: String, Default: empty string). If the parameter is empty, skip creating the access entry. Alternative: run `aws eks create-access-entry --cluster-name {cluster} --principal-arn {role_arn} --type STANDARD` and `aws eks associate-access-policy --cluster-name {cluster} --principal-arn {role_arn} --policy-arn arn:aws:eks::aws:cluster-access-policy/AmazonEKSViewPolicy --access-scope type=cluster` via CLI.
+- [ ] T014 Upload source zip to S3 — from the repo root, run `zip -r /tmp/source.zip . --exclude '.venv/*' 'specs/*' '.git/*' '.specify/*' '__pycache__/*' '*.pyc' '.env'` then `aws s3 cp /tmp/source.zip s3://{BuildSourceBucket}/source.zip`. Get the bucket name from CloudFormation stack parameters: `aws cloudformation describe-stacks --stack-name strands-demo-agentcore --query "Stacks[0].Parameters[?ParameterKey=='BuildSourceBucket'].ParameterValue" --output text`.
+- [ ] T015 Trigger CodeBuild to rebuild the container image — run `aws codebuild start-build --project-name strands-demo-agent-build --query 'build.id' --output text` and monitor with `aws codebuild batch-get-builds --ids {build_id} --query 'builds[0].buildStatus' --output text`. Wait until status is `SUCCEEDED`. This rebuilds the Docker image with the new code including `mcp-proxy-for-aws` and the updated `src/agentcore/app.py`.
+- [ ] T016 Update the CloudFormation stack with the new template — run `aws cloudformation update-stack --stack-name strands-demo-agentcore --template-body file://infra/agentcore/template.yaml --parameters ParameterKey=CognitoUserPoolId,UsePreviousValue=true ParameterKey=CognitoClientId,UsePreviousValue=true ParameterKey=CognitoRegion,UsePreviousValue=true ParameterKey=AnthropicApiKey,UsePreviousValue=true ParameterKey=TavilyApiKey,UsePreviousValue=true ParameterKey=BuildSourceBucket,UsePreviousValue=true --capabilities CAPABILITY_NAMED_IAM`. Wait until status is `UPDATE_COMPLETE`. This applies the new IAM policies (EksMcpAccess, EksReadAccess, EksSupportingReadAccess) and adds the EKS_MCP_REGION env var.
+- [ ] T017 Force the AgentCore Runtime to pull the new container image — IMPORTANT: just updating CloudFormation is NOT sufficient because the `ContainerUri` uses a `latest` tag that doesn't change, so CloudFormation doesn't see a need to redeploy the container. Run `aws bedrock-agentcore-control get-agent-runtime --agent-runtime-id {runtime_id}` to get ALL current config (roleArn, networkConfiguration, authorizerConfiguration, environmentVariables), then run `aws bedrock-agentcore-control update-agent-runtime --agent-runtime-id {runtime_id} --agent-runtime-artifact '{"containerConfiguration":{"containerUri":"{ecr_uri}:latest"}}' --role-arn {role_arn} --network-configuration '{...}' --authorizer-configuration '{...}' --environment-variables '{...}'`. CRITICAL: ALL existing configuration must be included in the update call, especially `--authorizer-configuration` with the Cognito JWT config, otherwise the Runtime will lose its auth config and return 403 errors. Wait until Runtime status is `READY`.
+- [ ] T018 Verify the deployed agent works end-to-end — invoke the Runtime via CLI: `aws bedrock-agentcore invoke-agent-runtime --agent-runtime-arn {arn} --qualifier DEFAULT --payload {base64_encoded_prompt} --runtime-session-id {uuid} /tmp/response.json` with the prompt "What tools do you have access to? Do you have EKS tools?". Parse the response and confirm it lists EKS MCP tools (list_eks_resources, describe_eks_resource, get_pod_logs, etc.) alongside Tavily tools. If only Tavily tools appear, the container was not properly updated — re-run T016.
+
+**Checkpoint**: Feature fully deployed and verified end-to-end — agent responds with EKS MCP tools in production
+
+---
+
 ## Dependencies & Execution Order
 
 ### Phase Dependencies
@@ -105,6 +123,7 @@
 - **User Story 3 (Phase 4)**: Depends on T005 (IAM policies + env var in template)
 - **User Story 2 (Phase 5)**: Depends on T006/T007 (tools loaded in agent)
 - **Polish (Phase 6)**: Depends on all previous phases
+- **Deployment (Phase 7)**: Depends on all previous phases. Code must be merged to `main` and pushed to GitHub before T013. Tasks T013-T017 are strictly sequential.
 
 ### User Story Dependencies
 
@@ -144,6 +163,7 @@
 3. User Story 3 → Validate CloudFormation → Infrastructure confirmed
 4. User Story 2 → Validate troubleshooting → Full feature complete
 5. Polish → Final validation
+6. Deployment → Upload, build, deploy, verify end-to-end
 
 ---
 
@@ -151,7 +171,7 @@
 
 - [P] tasks = different files, no dependencies
 - [Story] label maps task to specific user story for traceability
-- Total: 12 tasks across 6 phases (T001-T012)
+- Total: 18 tasks across 7 phases (T001-T018)
 - MCP tools are loaded once and provide all 16 read-only EKS tools — no per-story tool configuration needed
 - Graceful degradation: if EKS MCP connection fails, agent still works with Tavily only
 - Read-only enforcement (FR-009): IAM-only — the policy grants `eks-mcp:CallReadOnlyTool` but not `eks-mcp:CallPrivilegedTool`. Write tools may appear in the tool list but will fail at IAM level if invoked. No application-layer filter is applied (conscious risk acceptance — IAM is the security boundary)
