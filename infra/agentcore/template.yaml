@@ -410,6 +410,11 @@ Resources:
       RetentionInDays: 30
     DeletionPolicy: Delete
 
+  # ── AgentCore Gateway ────────────────────────────────────────────────────────
+  # NOTE: Gateway is created via CLI (agentcore gateway create-mcp-gateway)
+  # and Tavily target via boto3 API. CFN resource type requires AuthorizerType
+  # which is not well-documented. Gateway ID and URL are managed outside CFN.
+
   # ── AgentCore Memory ─────────────────────────────────────────────────────────
 
   AgentCoreMemory:
@@ -461,11 +466,12 @@ Resources:
             - !Ref CognitoClientId
       EnvironmentVariables:
         ANTHROPIC_API_KEY: !Ref AnthropicApiKey
-        TAVILY_API_KEY: !Ref TavilyApiKey
         LOG_LEVEL: INFO
         EKS_MCP_REGION: !Ref EksMcpRegion
         AWS_MCP_REGION: !Ref AwsMcpRegion
         AGENTCORE_MEMORY_ID: !GetAtt AgentCoreMemory.MemoryId
+        # Gateway URL is set manually via update-agent-runtime after CLI creation
+        # AGENTCORE_GATEWAY_URL: https://strands-demo-gateway-dyu2bzplen.gateway.bedrock-agentcore.us-east-1.amazonaws.com/mcp
 
 # ── Outputs ───────────────────────────────────────────────────────────────────
 

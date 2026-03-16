@@ -1,4 +1,4 @@
-"""Strands Agent factory with Tavily web search, EKS MCP, and AWS API MCP tools."""
+"""Strands Agent factory with Gateway (Tavily), EKS MCP, and AWS API MCP tools."""
 
 from __future__ import annotations
 
@@ -7,10 +7,9 @@ import os
 from typing import Any
 
 from strands import Agent
-from strands_tools import tavily
 
 from src.agent.model import create_model
-from src.agent.mcp_tools import get_aws_api_mcp_tools, get_eks_mcp_tools
+from src.agent.mcp_tools import get_aws_api_mcp_tools, get_eks_mcp_tools, get_gateway_tools
 
 logger = logging.getLogger(__name__)
 
@@ -20,30 +19,38 @@ def create_agent(
     memory_id: str | None = None,
     session_id: str | None = None,
     actor_id: str | None = None,
+    gateway_url: str | None = None,
+    access_token: str | None = None,
 ) -> tuple[Agent, list, Any | None]:
-    """Return a configured Strands Agent with Tavily, EKS MCP, and AWS API MCP tools.
+    """Return a configured Strands Agent with Gateway, EKS MCP, and AWS API MCP tools.
 
     Args:
         memory_id: AgentCore Memory resource ID. When set, enables memory.
         session_id: Session identifier for short-term memory scoping.
         actor_id: User identifier (Cognito username) for per-user memory isolation.
+        gateway_url: AgentCore Gateway MCP endpoint URL. When set, loads Tavily
+            tools from the Gateway. When not set, no web search tools are loaded.
+        access_token: Cognito access token for Gateway authentication.
 
     Returns:
         Tuple of (agent, mcp_clients, session_manager). The caller is responsible
         for closing each MCP client and the session_manager when done.
         session_manager may be None if memory is not configured.
-
-    Raises:
-        EnvironmentError: If TAVILY_API_KEY is not set.
     """
-    if not os.getenv("TAVILY_API_KEY"):
-        raise EnvironmentError(
-            "TAVILY_API_KEY is not set. "
-            "Add it to your .env file or environment. "
-            "Obtain a free key at https://app.tavily.com"
-        )
-
     mcp_clients: list = []
+
+    # Load Gateway tools (Tavily via managed MCP endpoint)
+    gateway_tools: list = []
+    if gateway_url:
+        gw_client, gateway_tools = get_gateway_tools(gateway_url, access_token or "")
+        if gw_client is not None:
+            mcp_clients.append(gw_client)
+        if gateway_tools:
+            logger.info("Gateway tools loaded: count=%d", len(gateway_tools))
+        else:
+            logger.warning("Gateway tools not available")
+    else:
+        logger.info("Gateway not configured — web search tools will not be available")
 
     eks_client, eks_tools = get_eks_mcp_tools()
     if eks_client is not None:
@@ -92,14 +99,15 @@ def create_agent(
         logger.info("AgentCore Memory not configured — agent will operate without memory")
 
     try:
-        tools = [tavily, *eks_tools, *aws_api_tools]
+        tools = [*gateway_tools, *eks_tools, *aws_api_tools]
         agent_kwargs: dict[str, Any] = {"model": create_model(), "tools": tools}
         if session_manager is not None:
             agent_kwargs["session_manager"] = session_manager
 
         agent = Agent(**agent_kwargs)
         logger.info(
-            "Strands Agent created: tools=[tavily + %d EKS MCP + %d AWS MCP] memory=%s",
+            "Strands Agent created: tools=[%d Gateway + %d EKS MCP + %d AWS MCP] memory=%s",
+            len(gateway_tools),
             len(eks_tools),
             len(aws_api_tools),
             "enabled" if session_manager else "disabled",

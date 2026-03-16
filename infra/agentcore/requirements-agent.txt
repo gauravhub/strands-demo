@@ -12,3 +12,5 @@ python-dotenv>=1.0.0
 aws-opentelemetry-distro>=0.10.1
 # MCP proxy for AWS — SigV4-authenticated connection to managed EKS MCP Server.
 mcp-proxy-for-aws>=1.0.0
+# MCP client — streamablehttp_client transport for AgentCore Gateway.
+mcp>=1.0.0

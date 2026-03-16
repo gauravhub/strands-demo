@@ -13,9 +13,8 @@ from typing import Any
 
 from bedrock_agentcore.runtime import BedrockAgentCoreApp
 from strands import Agent
-from strands_tools import tavily
 
-from src.agent.mcp_tools import get_aws_api_mcp_tools, get_eks_mcp_tools
+from src.agent.mcp_tools import get_aws_api_mcp_tools, get_eks_mcp_tools, get_gateway_tools
 from src.agent.model import create_model
 
 logger = logging.getLogger(__name__)
@@ -98,6 +97,16 @@ async def invoke(
     username: str = payload.get("username", "anonymous")
     session_id: str = getattr(context, "session_id", "unknown")
     memory_id: str = os.getenv("AGENTCORE_MEMORY_ID", "")
+    gateway_url: str = os.getenv("AGENTCORE_GATEWAY_URL", "")
+
+    # Extract access token for Gateway auth — try request headers first, then payload
+    access_token = ""
+    request_headers = getattr(context, "request_headers", {}) or {}
+    auth_header = request_headers.get("Authorization", "")
+    if auth_header.startswith("Bearer "):
+        access_token = auth_header[len("Bearer "):]
+    if not access_token:
+        access_token = payload.get("access_token", "")
 
     logger.info(
         "Invocation start: session_id=%s username=%s memory=%s prompt_len=%d",
@@ -109,6 +118,14 @@ async def invoke(
 
     # Load MCP tools before entering the async generator to avoid
     # blocking the event loop with list_tools_sync() inside the generator.
+    gateway_client, gateway_tools = get_gateway_tools(gateway_url, access_token)
+    if gateway_tools:
+        logger.info("Gateway tools loaded: count=%d", len(gateway_tools))
+    elif gateway_url:
+        logger.warning("Gateway tools not available — web search will be unavailable")
+    else:
+        logger.info("Gateway not configured — web search tools will not be available")
+
     eks_client, eks_tools = get_eks_mcp_tools()
     if eks_tools:
         logger.info("EKS MCP tools loaded: count=%d", len(eks_tools))
@@ -121,7 +138,7 @@ async def invoke(
     else:
         logger.warning("AWS MCP tools not available")
 
-    tools = [tavily, *eks_tools, *aws_api_tools]
+    tools = [*gateway_tools, *eks_tools, *aws_api_tools]
 
     # Create session manager for AgentCore Memory (optional)
     session_manager = None
@@ -195,6 +212,11 @@ async def invoke(
             tool_call_count,
             error_count,
         )
+        if gateway_client is not None:
+            try:
+                gateway_client.__exit__(None, None, None)
+            except Exception:
+                logger.warning("Failed to close Gateway MCP client", exc_info=True)
         if eks_client is not None:
             try:
                 eks_client.__exit__(None, None, None)

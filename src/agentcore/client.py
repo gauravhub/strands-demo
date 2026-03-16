@@ -44,6 +44,7 @@ def invoke_streaming(
     access_token: str,
     prompt: str,
     username: str = "",
+    access_token_raw: str = "",
 ) -> Generator[dict[str, Any], None, None]:
     """Call the AgentCore Runtime endpoint and yield parsed SSE events.
 
@@ -55,6 +56,8 @@ def invoke_streaming(
         access_token: Cognito access token — sent as Bearer in Authorization header.
         prompt: User message text for this turn.
         username: Cognito username — passed to agent for memory actor_id.
+        access_token_raw: Raw Cognito token for Gateway auth — included in payload
+            so the agent backend can forward it to the Gateway.
 
     Yields:
         Parsed SSE event dicts: {"type": "text"|"reasoning"|"tool_start"|
@@ -86,7 +89,7 @@ def invoke_streaming(
     response = requests.post(
         url,
         headers=headers,
-        json={"prompt": prompt, "username": username},
+        json={"prompt": prompt, "username": username, "access_token": access_token_raw},
         stream=True,
         timeout=(5, 120),  # (connect_timeout, read_timeout) in seconds
     )

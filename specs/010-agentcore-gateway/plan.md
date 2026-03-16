@@ -4,12 +4,12 @@
 
 ## Summary
 
-Replace direct Tavily SDK usage with AgentCore Gateway — a managed MCP endpoint that centralizes tool access with authentication, observability, and semantic discovery. A Lambda function wraps the Tavily API as a Gateway target. The Gateway shares the same Cognito JWT auth as the Runtime. Graceful degradation falls back to direct Tavily SDK when Gateway is not configured.
+Replace direct Tavily SDK usage with AgentCore Gateway — a managed MCP endpoint that centralizes tool access with authentication, observability, and semantic discovery. Tavily is available as a built-in Gateway integration template (no Lambda needed) — the Gateway routes requests directly to the Tavily API with outbound API key auth. The Gateway shares the same Cognito JWT auth as the Runtime. When Gateway is not configured, web search tools are simply not available — no fallback to the direct Tavily SDK.
 
 ## Technical Context
 
 **Language/Version**: Python 3.11+
-**Primary Dependencies**: strands-agents>=0.1.0, bedrock-agentcore>=0.1.0, mcp (for streamablehttp_client), tavily-python (Lambda)
+**Primary Dependencies**: strands-agents>=0.1.0, bedrock-agentcore>=0.1.0, mcp (for streamablehttp_client)
 **Storage**: N/A
 **Testing**: pytest
 **Target Platform**: AWS AgentCore Runtime + Streamlit Cloud
@@ -19,10 +19,10 @@ Replace direct Tavily SDK usage with AgentCore Gateway — a managed MCP endpoin
 
 | Principle | Status | Notes |
 |-----------|--------|-------|
-| I. Simplicity First | PASS | Uses managed Gateway service, Lambda wraps existing Tavily SDK |
-| II. Iterative & Independent Delivery | PASS | Graceful degradation preserves current behavior |
+| I. Simplicity First | PASS | Uses managed Gateway service with built-in Tavily integration template |
+| II. Iterative & Independent Delivery | PASS | Gateway is additive; without it, agent works but lacks web search |
 | III. Python-Native Patterns | PASS | All Python 3.11+ |
-| IV. Security by Design | PASS | Same Cognito auth for Gateway and Runtime, API key in Lambda env |
+| IV. Security by Design | PASS | Same Cognito auth for Gateway and Runtime, API key via AgentCore Identity credential provider |
 | V. Observability & Debuggability | PASS | Log delivery + tracing enabled for Gateway |
 
 ## Project Structure
@@ -32,7 +32,7 @@ Replace direct Tavily SDK usage with AgentCore Gateway — a managed MCP endpoin
 ```text
 src/
 ├── agent/
-│   ├── chatbot.py             # MODIFY: Add gateway_url/access_token params, conditional Gateway vs direct Tavily
+│   ├── chatbot.py             # MODIFY: Add gateway_url/access_token params, load Tavily tools from Gateway
 │   ├── mcp_tools.py           # MODIFY: Add get_gateway_tools() function
 │   └── model.py               # NO CHANGE
 ├── agentcore/
@@ -46,10 +46,9 @@ src/
 app.py                         # MODIFY: Pass gateway_url and access_token to create_agent()
 
 infra/agentcore/
-├── template.yaml              # MODIFY: Add Gateway, Lambda, GatewayTarget, Lambda IAM role, env var, output
-  # NOTE: No Lambda needed — Tavily uses built-in Gateway integration template
+├── template.yaml              # MODIFY: Add Gateway resource, env var, output (Tavily target added via Console)
 ├── Dockerfile                 # NO CHANGE
-└── requirements-agent.txt     # NO CHANGE
+└── requirements-agent.txt     # MODIFY: Add mcp package for streamablehttp_client
 ```
 
 ## Architecture
@@ -62,7 +61,7 @@ infra/agentcore/
    - Calls `list_tools_sync()` to discover tools
    - Returns `(mcp_client, tools)` or `(None, [])` on failure
 
-2. **Agent Factory** (`src/agent/chatbot.py`): Add `gateway_url` and `access_token` params. When `gateway_url` is set, load tools via `get_gateway_tools()` instead of importing `strands_tools.tavily`. When not set, fall back to direct `tavily` import.
+2. **Agent Factory** (`src/agent/chatbot.py`): Add `gateway_url` and `access_token` params. When `gateway_url` is set, load tools via `get_gateway_tools()`. When not set, no web search tools are loaded (no fallback to direct Tavily SDK). Remove the `strands_tools.tavily` import.
 
 3. **AgentCore Entrypoint** (`src/agentcore/app.py`): Read `AGENTCORE_GATEWAY_URL` from env. For access token in AgentCore mode, propagate the JWT from the `Authorization` header (configure header allowlist) or use workload identity token. Pass to agent creation.
 

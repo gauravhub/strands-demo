@@ -25,33 +25,33 @@ A user asks the agent to search the web. The agent uses Tavily tools served thro
 
 ### User Story 2 - Gateway Infrastructure via CloudFormation (Priority: P1)
 
-The Gateway, its Lambda target, IAM roles, and configuration are all provisioned through the existing CloudFormation template. No manual setup required.
+The Gateway and its IAM configuration are provisioned through the existing CloudFormation template. The Tavily target is added as a post-deployment step via the AWS Console (built-in integration templates are Console-only).
 
 **Why this priority**: Infrastructure as code ensures reproducibility. The Gateway must be co-deployed with the Runtime.
 
-**Independent Test**: Deploy the updated CloudFormation stack and verify the Gateway is created with the Tavily Lambda target.
+**Independent Test**: Deploy the updated CloudFormation stack and verify the Gateway is created. Then add the Tavily target via Console.
 
 **Acceptance Scenarios**:
 
-1. **Given** the updated template, **When** the stack deploys, **Then** the Gateway, Lambda function, Lambda role, and Gateway target are all created.
+1. **Given** the updated template, **When** the stack deploys, **Then** the Gateway resource and its IAM configuration are created.
 2. **Given** the Gateway is created, **When** its auth config is inspected, **Then** it uses the same Cognito User Pool and Client ID as the Runtime.
-3. **Given** the Gateway target is created, **When** its configuration is inspected, **Then** it points to the Tavily Lambda function.
+3. **Given** the Tavily target is added via Console, **When** its configuration is inspected, **Then** it uses the built-in Tavily integration template with outbound API key auth.
 
 ---
 
-### User Story 3 - Graceful Degradation Without Gateway (Priority: P1)
+### User Story 3 - Gateway Required for Web Search (Priority: P1)
 
-When the Gateway URL is not configured, the agent falls back to using `strands_tools.tavily` directly, preserving current behavior for local development and environments without Gateway.
+When `AGENTCORE_GATEWAY_URL` is configured, the agent loads Tavily tools from the Gateway. When it is not configured, web search tools are simply not available — no fallback to the direct Tavily SDK.
 
-**Why this priority**: The agent must work in all environments — local dev, Streamlit Cloud, and AgentCore Runtime with or without Gateway.
+**Why this priority**: Gateway is the canonical path for tool access. Eliminating the fallback simplifies the code and ensures all tool invocations go through the managed, authenticated, observable Gateway.
 
-**Independent Test**: Run the agent locally without `AGENTCORE_GATEWAY_URL` set and verify Tavily tools work via the direct SDK.
+**Independent Test**: Run the agent without `AGENTCORE_GATEWAY_URL` set and verify no web search tools are loaded (agent cannot search the web). Set `AGENTCORE_GATEWAY_URL` and verify Tavily tools appear via Gateway.
 
 **Acceptance Scenarios**:
 
-1. **Given** `AGENTCORE_GATEWAY_URL` is not set, **When** the agent starts, **Then** it uses `strands_tools.tavily` directly (current behavior).
-2. **Given** `AGENTCORE_GATEWAY_URL` is set, **When** the agent starts, **Then** it loads Tavily tools from the Gateway via MCP.
-3. **Given** the Gateway is unavailable at runtime, **When** the agent tries to connect, **Then** it logs a warning and falls back to direct Tavily SDK.
+1. **Given** `AGENTCORE_GATEWAY_URL` is set, **When** the agent starts, **Then** it loads Tavily tools from the Gateway via MCP.
+2. **Given** `AGENTCORE_GATEWAY_URL` is not set, **When** the agent starts, **Then** no web search tools are available (no fallback to direct SDK).
+3. **Given** the Gateway is unavailable at runtime, **When** the agent tries to connect, **Then** it logs a warning and web search tools are unavailable.
 
 ---
 
@@ -88,7 +88,7 @@ The updated agent is deployed to AgentCore Runtime with the Gateway URL as an en
 - What happens when the Gateway endpoint is unreachable but `AGENTCORE_GATEWAY_URL` is set?
 - How does the agent handle Gateway authentication failures (expired token)?
 - What happens when the Tavily Lambda function fails (API key invalid, rate limited)?
-- How does the agent behave when both Gateway and fallback Tavily are unavailable?
+- How does the agent behave when Gateway is unavailable (no fallback)?
 - What happens when the access token is not available in local mode for Gateway auth?
 
 ## Requirements *(mandatory)*
@@ -97,9 +97,9 @@ The updated agent is deployed to AgentCore Runtime with the Gateway URL as an en
 
 - **FR-001**: System MUST serve Tavily web search tools through an AgentCore Gateway MCP endpoint.
 - **FR-002**: System MUST authenticate Gateway requests using the same Cognito User Pool and Client ID as the AgentCore Runtime (same access token works for both).
-- **FR-003**: System MUST create a Lambda function that wraps the Tavily API as an MCP-compatible tool target for the Gateway.
-- **FR-004**: System MUST provision the Gateway, Lambda target, and all associated resources via CloudFormation.
-- **FR-005**: System MUST fall back to using `strands_tools.tavily` directly when `AGENTCORE_GATEWAY_URL` is not configured.
+- **FR-003**: System MUST use the Tavily built-in integration template as a Gateway target, routing requests to the Tavily API with outbound API key auth. The target is added via the AWS Console (built-in templates are not supported via CloudFormation).
+- **FR-004**: System MUST provision the Gateway and its associated IAM resources via CloudFormation. The Tavily target MUST be added as a post-deployment manual step via the AWS Console (built-in integration templates are not CFN-supported).
+- **FR-005**: When `AGENTCORE_GATEWAY_URL` is not configured, web search tools MUST NOT be loaded (no fallback to direct Tavily SDK). The agent operates without web search capability.
 - **FR-006**: System MUST pass the user's access token from the Streamlit frontend to the agent for Gateway authentication.
 - **FR-007**: System MUST export the Gateway URL as a CloudFormation output and inject it as `AGENTCORE_GATEWAY_URL` environment variable on the Runtime.
 - **FR-008**: System MUST enable observability (log delivery + tracing) for the Gateway resource.
@@ -109,8 +109,7 @@ The updated agent is deployed to AgentCore Runtime with the Gateway URL as an en
 ### Key Entities
 
 - **Gateway**: An AgentCore Gateway MCP endpoint that routes tool calls to configured targets.
-- **Gateway Target**: A Lambda function registered with the Gateway that implements the Tavily MCP tool interface.
-- **Tavily Lambda**: A serverless function that receives MCP tool call requests and proxies them to the Tavily API.
+- **Gateway Target**: A built-in integration template registered with the Gateway that routes MCP tool calls to the Tavily API with outbound API key authentication. Provides TavilySearchPost and TavilySearchExtract tools.
 
 ## Success Criteria *(mandatory)*
 
@@ -119,7 +118,7 @@ The updated agent is deployed to AgentCore Runtime with the Gateway URL as an en
 - **SC-001**: Users can search the web via Gateway-served Tavily tools — results are identical to direct SDK usage.
 - **SC-002**: The same Cognito access token authenticates both Runtime and Gateway requests — no additional login.
 - **SC-003**: CloudFormation deploys all Gateway resources on the first attempt.
-- **SC-004**: The agent works without Gateway when `AGENTCORE_GATEWAY_URL` is not set.
+- **SC-004**: When `AGENTCORE_GATEWAY_URL` is not set, the agent starts without web search tools (no fallback to direct SDK).
 - **SC-005**: Gateway tool invocations appear in CloudWatch logs and X-Ray traces.
 - **SC-006**: The Runtime update preserves all existing configuration.
 
@@ -134,7 +133,6 @@ The updated agent is deployed to AgentCore Runtime with the Gateway URL as an en
 - The `AWS::BedrockAgentCore::Gateway` and `AWS::BedrockAgentCore::GatewayTarget` CloudFormation resource types are available in us-east-1.
 - The Gateway endpoint URL follows the pattern `https://{gateway-id}.gateway.bedrock-agentcore.{region}.amazonaws.com/mcp`.
 - The Strands `MCPClient` with `streamablehttp_client` transport can connect to the Gateway using Bearer token auth.
-- The Tavily Lambda needs Python 3.11 runtime and the `tavily-python` package.
 - The Gateway's `CustomJWTAuthorizer` configuration accepts the same Cognito discovery URL and client ID as the Runtime.
 - Vended log delivery for Gateway observability is configured via CloudWatch Logs APIs (not CFN properties).
 - The `TAVILY_API_KEY` will be stored in the Lambda environment variable (AgentCore Identity credential provider deferred if CFN resource type not available).

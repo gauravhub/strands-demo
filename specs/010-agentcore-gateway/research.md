@@ -8,11 +8,12 @@
 - **Rationale**: Single sign-on — user logs in once, same token works for both Runtime and Gateway
 - **Alternatives**: Separate auth, IAM SigV4 — both add complexity
 
-## R2: Tavily Lambda Target
+## R2: Tavily Gateway Target
 
-- **Decision**: Create a Lambda function that receives MCP tool call requests and proxies to Tavily API
-- **Rationale**: Gateway supports Lambda as a native target type with McpLambdaTargetConfiguration. Lambda handles the tool schema and invocation.
-- **Alternatives**: OpenAPI target — but Tavily doesn't have a public OpenAPI spec suitable for this
+- **Decision**: Use Tavily built-in integration template (no Lambda needed). The Gateway routes requests directly to `https://api.tavily.com` with outbound API key auth. Provides TavilySearchPost (/search) and TavilySearchExtract (/extract) tools.
+- **Rationale**: Built-in templates are simpler than custom Lambda targets — no code to maintain. Tavily is natively supported.
+- **Limitation**: Built-in templates can only be added via AWS Console, not CloudFormation. This is a manual post-deployment step.
+- **Alternatives considered**: Lambda target (more complex, requires custom code), OpenAPI target (Tavily lacks suitable public spec)
 
 ## R3: Access Token Propagation in AgentCore Mode
 

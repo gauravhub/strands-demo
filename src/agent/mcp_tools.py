@@ -67,6 +67,55 @@ def get_eks_mcp_tools() -> tuple[Any | None, list]:
         return None, []
 
 
+def get_gateway_tools(gateway_url: str, access_token: str) -> tuple[Any | None, list]:
+    """Load MCP tools from an AgentCore Gateway endpoint.
+
+    Uses ``streamablehttp_client`` transport with Bearer token auth to connect
+    to the Gateway and discover available tools (e.g. Tavily search).
+
+    Args:
+        gateway_url: Full Gateway MCP endpoint URL.
+        access_token: Cognito access token — sent as Bearer in Authorization header.
+
+    Returns:
+        Tuple of (mcp_client, tools_list). The caller is responsible for
+        calling ``mcp_client.__exit__()`` when done.  On failure returns
+        ``(None, [])``.
+    """
+    if not gateway_url:
+        logger.info("No Gateway URL configured — Gateway tools will not be available.")
+        return None, []
+
+    try:
+        from mcp.client.streamable_http import streamablehttp_client
+        from strands.tools.mcp.mcp_client import MCPClient
+
+        mcp_factory = lambda: streamablehttp_client(
+            url=gateway_url,
+            headers={"Authorization": f"Bearer {access_token}"},
+        )
+
+        mcp_client = MCPClient(mcp_factory)
+        mcp_client.__enter__()
+
+        tools = mcp_client.list_tools_sync()
+        logger.info(
+            "Gateway MCP tools loaded: url=%s tool_count=%d",
+            gateway_url,
+            len(tools),
+        )
+        return mcp_client, tools
+
+    except Exception:
+        logger.warning(
+            "Failed to connect to AgentCore Gateway at %s — "
+            "Gateway tools will not be available",
+            gateway_url,
+            exc_info=True,
+        )
+        return None, []
+
+
 def get_aws_api_mcp_tools() -> tuple[Any | None, list]:
     """Load AWS MCP tools from the managed AWS MCP Server.
 
