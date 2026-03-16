@@ -115,7 +115,7 @@ def show_main_app() -> None:
         # Local fallback mode — run agent in-process (feature 003 behaviour)
         # Verify FR-011: existing flow is unchanged when AGENTCORE_RUNTIME_ARN is unset
         try:
-            agent, mcp_client = create_agent()
+            agent, _mcp_clients = create_agent()
         except EnvironmentError as e:
             st.error(str(e))
             st.stop()

@@ -1,4 +1,4 @@
-"""Strands Agent factory with Tavily web search and EKS MCP tools."""
+"""Strands Agent factory with Tavily web search, EKS MCP, and AWS API MCP tools."""
 
 import logging
 import os
@@ -7,18 +7,18 @@ from strands import Agent
 from strands_tools import tavily
 
 from src.agent.model import create_model
-from src.agent.mcp_tools import get_eks_mcp_tools
+from src.agent.mcp_tools import get_aws_api_mcp_tools, get_eks_mcp_tools
 
 logger = logging.getLogger(__name__)
 
 
-def create_agent() -> tuple[Agent, object | None]:
-    """Return a configured Strands Agent with Tavily and EKS MCP tools.
+def create_agent() -> tuple[Agent, list]:
+    """Return a configured Strands Agent with Tavily, EKS MCP, and AWS API MCP tools.
 
     Returns:
-        Tuple of (agent, mcp_client). The caller is responsible for calling
-        ``mcp_client.stop()`` when done. mcp_client may be None if EKS MCP
-        tools failed to load (graceful degradation).
+        Tuple of (agent, mcp_clients). The caller is responsible for closing
+        each client in the list when done. The list may be empty if no MCP
+        tools loaded (graceful degradation).
 
     Raises:
         EnvironmentError: If TAVILY_API_KEY is not set.
@@ -30,27 +30,37 @@ def create_agent() -> tuple[Agent, object | None]:
             "Obtain a free key at https://app.tavily.com"
         )
 
-    mcp_client, eks_tools = get_eks_mcp_tools()
+    mcp_clients: list = []
 
+    eks_client, eks_tools = get_eks_mcp_tools()
+    if eks_client is not None:
+        mcp_clients.append(eks_client)
     if eks_tools:
         logger.info("EKS MCP tools loaded: count=%d", len(eks_tools))
     else:
-        logger.warning(
-            "EKS MCP tools not available — agent will operate with Tavily only"
-        )
+        logger.warning("EKS MCP tools not available")
+
+    aws_api_client, aws_api_tools = get_aws_api_mcp_tools()
+    if aws_api_client is not None:
+        mcp_clients.append(aws_api_client)
+    if aws_api_tools:
+        logger.info("AWS API MCP tools loaded: count=%d", len(aws_api_tools))
+    else:
+        logger.warning("AWS API MCP tools not available")
 
     try:
-        tools = [tavily, *eks_tools]
+        tools = [tavily, *eks_tools, *aws_api_tools]
         agent = Agent(model=create_model(), tools=tools)
         logger.info(
-            "Strands Agent created: model=claude-sonnet-4-6, tools=[tavily + %d EKS MCP]",
+            "Strands Agent created: tools=[tavily + %d EKS MCP + %d AWS API MCP]",
             len(eks_tools),
+            len(aws_api_tools),
         )
-        return agent, mcp_client
+        return agent, mcp_clients
     except Exception:
-        if mcp_client is not None:
+        for client in mcp_clients:
             try:
-                mcp_client.__exit__(None, None, None)
+                client.__exit__(None, None, None)
             except Exception:
                 pass
         logger.error("Failed to create Strands Agent", exc_info=True)
