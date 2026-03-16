@@ -95,12 +95,15 @@ async def invoke(
     Emits events of types: text, reasoning, tool_start, tool_result, error, done.
     """
     prompt: str = payload.get("prompt", "")
+    username: str = payload.get("username", "anonymous")
     session_id: str = getattr(context, "session_id", "unknown")
+    memory_id: str = os.getenv("AGENTCORE_MEMORY_ID", "")
 
     logger.info(
-        "Invocation start: session_id=%s prompt=%r prompt_len=%d",
+        "Invocation start: session_id=%s username=%s memory=%s prompt_len=%d",
         session_id,
-        prompt,
+        username,
+        "enabled" if memory_id else "disabled",
         len(prompt),
     )
 
@@ -120,12 +123,40 @@ async def invoke(
 
     tools = [tavily, *eks_tools, *aws_api_tools]
 
+    # Create session manager for AgentCore Memory (optional)
+    session_manager = None
+    if memory_id:
+        try:
+            from bedrock_agentcore.memory.integrations.strands.config import AgentCoreMemoryConfig
+            from bedrock_agentcore.memory.integrations.strands.session_manager import (
+                AgentCoreMemorySessionManager,
+            )
+
+            mem_config = AgentCoreMemoryConfig(
+                memory_id=memory_id,
+                session_id=session_id,
+                actor_id=username,
+            )
+            session_manager = AgentCoreMemorySessionManager(
+                agentcore_memory_config=mem_config,
+                region_name=os.getenv("AWS_REGION", "us-east-1"),
+            )
+            session_manager.__enter__()
+            logger.info("AgentCore Memory enabled: memory_id=%s actor_id=%s", memory_id, username)
+        except Exception:
+            logger.warning("Failed to initialize AgentCore Memory", exc_info=True)
+            session_manager = None
+
     text_events = 0
     tool_call_count = 0
     error_count = 0
 
     try:
-        agent = Agent(model=create_model(), tools=tools)
+        agent_kwargs: dict[str, Any] = {"model": create_model(), "tools": tools}
+        if session_manager is not None:
+            agent_kwargs["session_manager"] = session_manager
+
+        agent = Agent(**agent_kwargs)
         async for raw_event in agent.stream_async(prompt):
             sse = _to_sse_event(raw_event)
             if sse is None:
@@ -174,6 +205,11 @@ async def invoke(
                 aws_api_client.__exit__(None, None, None)
             except Exception:
                 logger.warning("Failed to close AWS MCP client", exc_info=True)
+        if session_manager is not None:
+            try:
+                session_manager.__exit__(None, None, None)
+            except Exception:
+                logger.warning("Failed to close AgentCore Memory session manager", exc_info=True)
 
     yield {"type": "done"}
 

@@ -43,6 +43,7 @@ def invoke_streaming(
     session_id: str,
     access_token: str,
     prompt: str,
+    username: str = "",
 ) -> Generator[dict[str, Any], None, None]:
     """Call the AgentCore Runtime endpoint and yield parsed SSE events.
 
@@ -53,6 +54,7 @@ def invoke_streaming(
         session_id: Session identifier (UUID v4, ≥33 chars).
         access_token: Cognito access token — sent as Bearer in Authorization header.
         prompt: User message text for this turn.
+        username: Cognito username — passed to agent for memory actor_id.
 
     Yields:
         Parsed SSE event dicts: {"type": "text"|"reasoning"|"tool_start"|
@@ -84,7 +86,7 @@ def invoke_streaming(
     response = requests.post(
         url,
         headers=headers,
-        json={"prompt": prompt},
+        json={"prompt": prompt, "username": username},
         stream=True,
         timeout=(5, 120),  # (connect_timeout, read_timeout) in seconds
     )
