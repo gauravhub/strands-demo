@@ -25,7 +25,7 @@ models:
   # Review model (Phase 7) -- should be DIFFERENT from primary for blind-spot detection.
   # Set to "ask" to be prompted on first run.
   # Can be a single string or a list (tries in order until one is available).
-  review: "ask"
+  review: "sonnet"
 
 # Verify extension settings
 verify:
