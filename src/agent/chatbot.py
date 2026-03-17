@@ -9,7 +9,8 @@ from typing import Any
 from strands import Agent
 
 from src.agent.model import create_model
-from src.agent.mcp_tools import get_aws_api_mcp_tools, get_eks_mcp_tools, get_gateway_tools, load_browser_tools
+from src.agent.browser_tools import load_browser_tools
+from src.agent.mcp_tools import get_aws_api_mcp_tools, get_eks_mcp_tools, get_gateway_tools
 
 logger = logging.getLogger(__name__)
 

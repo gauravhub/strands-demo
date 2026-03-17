@@ -125,8 +125,6 @@ gitdb==4.0.12
     # via gitpython
 gitpython==3.1.46
     # via streamlit
-greenlet==3.3.2
-    # via playwright
 h11==0.16.0
     # via
     #   httpcore
@@ -210,8 +208,6 @@ multidict==6.7.1
     #   yarl
 narwhals==2.17.0
     # via altair
-nest-asyncio==1.6.0
-    # via strands-demo
 numpy==2.4.3
     # via
     #   pandas
@@ -254,8 +250,6 @@ pillow==12.1.1
     #   streamlit
 platformdirs==4.9.4
     # via fastmcp
-playwright==1.58.0
-    # via strands-demo
 prometheus-client==0.24.1
     # via pydocket
 prompt-toolkit==3.0.52
@@ -293,8 +287,6 @@ pydeck==0.9.1
     # via streamlit
 pydocket==0.18.2
     # via fastmcp
-pyee==13.0.1
-    # via playwright
 pygments==2.19.2
     # via rich
 pyjwt==2.11.0
@@ -420,7 +412,6 @@ typing-extensions==4.15.0
     #   pydantic
     #   pydantic-core
     #   pydocket
-    #   pyee
     #   referencing
     #   starlette
     #   strands-agents
