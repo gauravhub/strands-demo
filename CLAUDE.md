@@ -22,6 +22,8 @@ Auto-generated from all feature plans. Last updated: 2026-03-09
 - N/A — manifests stored as files in repo; application data in-cluster (DynamoDB-local, MySQL, PostgreSQL, Redis) (011-eks-retail-store-deploy)
 - N/A — no application code; AWS CLI commands + Kubernetes YAML manifests + AWS CLI v2, kubectl (with built-in Kustomize) (012-alb-ingress-ui)
 - N/A — infrastructure resources only (012-alb-ingress-ui)
+- Python 3.11+ + `strands-agents-tools>=0.1.0` (includes `AgentCoreBrowser`), `bedrock-agentcore>=0.1.0` (already installed), `playwright`, `nest-asyncio`, `streamlit>=1.35.0` (013-agentcore-browser)
+- N/A — ephemeral browser sessions only (013-agentcore-browser)
 
 - Python 3.11+ + `strands-agents`, `strands-agents-tools`, `streamlit`, `boto3`, (001-python-env-bootstrap)
 
@@ -41,9 +43,9 @@ cd src [ONLY COMMANDS FOR ACTIVE TECHNOLOGIES][ONLY COMMANDS FOR ACTIVE TECHNOLO
 Python 3.11+: Follow standard conventions
 
 ## Recent Changes
+- 013-agentcore-browser: Added Python 3.11+ + `strands-agents-tools>=0.1.0` (includes `AgentCoreBrowser`), `bedrock-agentcore>=0.1.0` (already installed), `playwright`, `nest-asyncio`, `streamlit>=1.35.0`
 - 012-alb-ingress-ui: Added N/A — no application code; AWS CLI commands + Kubernetes YAML manifests + AWS CLI v2, kubectl (with built-in Kustomize)
 - 011-eks-retail-store-deploy: Added N/A — no application code; Kubernetes YAML manifests only + kubectl (with built-in Kustomize), GitHub API (for fetching upstream files)
-- 010-agentcore-gateway: Added Python 3.11+ + strands-agents>=0.1.0, bedrock-agentcore>=0.1.0, mcp (for streamablehttp_client), tavily-python (Lambda)
 
 
 <!-- MANUAL ADDITIONS START -->
