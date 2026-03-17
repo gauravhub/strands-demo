@@ -190,10 +190,12 @@ def load_browser_tools() -> list:
         logger.info("AgentCore Browser tools loaded: region=%s tool_count=%d", region, len(tools))
         return tools
 
-    except Exception:
-        logger.warning(
+    except Exception as e:
+        logger.error(
             "Failed to load AgentCore Browser tools — "
-            "browser capabilities will not be available",
+            "browser capabilities will not be available: %s: %s",
+            type(e).__name__,
+            e,
             exc_info=True,
         )
         return []
