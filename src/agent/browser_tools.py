@@ -19,12 +19,21 @@ logger = logging.getLogger(__name__)
 _id_counter = count(1)
 
 
-def _cdp(ws, method: str, params: dict | None = None) -> dict:
-    """Send a CDP command over WebSocket and return the result."""
+def _cdp(ws, method: str, params: dict | None = None, session_id: str | None = None) -> dict:
+    """Send a CDP command over WebSocket and return the result.
+
+    Args:
+        ws: WebSocket connection.
+        method: CDP method name (e.g., 'Page.navigate').
+        params: Optional parameters for the method.
+        session_id: CDP session ID for target-scoped commands.
+    """
     msg_id = next(_id_counter)
     payload: dict = {"id": msg_id, "method": method}
     if params:
         payload["params"] = params
+    if session_id:
+        payload["sessionId"] = session_id
 
     ws.send(json.dumps(payload))
 
@@ -36,7 +45,7 @@ def _cdp(ws, method: str, params: dict | None = None) -> dict:
             if "error" in msg:
                 raise RuntimeError(f"CDP error in {method}: {msg['error']}")
             return msg.get("result", {})
-        # Ignore CDP events (method-only messages) and other responses
+        # Ignore CDP events and other responses
 
 
 def _browse(url: str, capture_screenshot: bool = True) -> dict:
@@ -55,28 +64,58 @@ def _browse(url: str, capture_screenshot: bool = True) -> dict:
         ws_url, headers = client.generate_ws_headers()
 
         with connect(ws_url, additional_headers=headers, open_timeout=30) as ws:
-            # Enable page events
-            _cdp(ws, "Page.enable")
+            # Step 1: Discover page targets at the browser level
+            targets_result = _cdp(ws, "Target.getTargets")
+            targets = targets_result.get("targetInfos", [])
+            logger.info("CDP targets found: %d", len(targets))
 
-            # Navigate
-            _cdp(ws, "Page.navigate", {"url": url})
+            # Find the first page target
+            page_target_id = None
+            for t in targets:
+                if t.get("type") == "page":
+                    page_target_id = t["targetId"]
+                    break
+
+            # If no page target exists, create one
+            if not page_target_id:
+                create_result = _cdp(ws, "Target.createTarget", {"url": "about:blank"})
+                page_target_id = create_result["targetId"]
+                logger.info("Created new page target: %s", page_target_id)
+
+            # Step 2: Attach to the page target to get a session
+            attach_result = _cdp(ws, "Target.attachToTarget", {
+                "targetId": page_target_id,
+                "flatten": True,
+            })
+            cdp_session = attach_result.get("sessionId", "")
+            logger.info("Attached to target %s, session: %s", page_target_id, cdp_session)
+
+            # Step 3: Enable Page domain on the target session
+            _cdp(ws, "Page.enable", session_id=cdp_session)
+
+            # Step 4: Navigate
+            _cdp(ws, "Page.navigate", {"url": url}, session_id=cdp_session)
             time.sleep(5)  # Wait for page load
 
-            # Get page title
-            title_result = _cdp(ws, "Runtime.evaluate", {"expression": "document.title"})
+            # Step 5: Get page title
+            title_result = _cdp(ws, "Runtime.evaluate",
+                                {"expression": "document.title"},
+                                session_id=cdp_session)
             title = title_result.get("result", {}).get("value", "Unknown page")
 
-            # Get text content (first 3000 chars)
+            # Step 6: Get text content (first 3000 chars)
             content_result = _cdp(ws, "Runtime.evaluate", {
-                "expression": "document.body.innerText.substring(0, 3000)"
-            })
+                "expression": "document.body ? document.body.innerText.substring(0, 3000) : ''"
+            }, session_id=cdp_session)
             content = content_result.get("result", {}).get("value", "")
 
             result = {"title": title, "content": content}
 
-            # Take screenshot if requested
+            # Step 7: Take screenshot if requested
             if capture_screenshot:
-                screenshot_result = _cdp(ws, "Page.captureScreenshot", {"format": "png"})
+                screenshot_result = _cdp(ws, "Page.captureScreenshot",
+                                         {"format": "png"},
+                                         session_id=cdp_session)
                 result["screenshot_b64"] = screenshot_result.get("data", "")
 
             return result
