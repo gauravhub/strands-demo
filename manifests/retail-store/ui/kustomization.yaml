@@ -7,3 +7,6 @@ resources:
   - serviceAccount.yaml
   - service.yaml
   - deployment.yaml
+  - ingressclassparams.yaml
+  - ingressclass.yaml
+  - ingress.yaml
