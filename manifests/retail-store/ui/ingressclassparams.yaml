@@ -3,4 +3,4 @@ kind: IngressClassParams
 metadata:
   name: alb
 spec:
-  scheme: internet-facing
+  scheme: internal
