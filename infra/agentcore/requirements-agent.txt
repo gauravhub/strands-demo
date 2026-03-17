@@ -14,3 +14,5 @@ aws-opentelemetry-distro>=0.10.1
 mcp-proxy-for-aws>=1.0.0
 # MCP client — streamablehttp_client transport for AgentCore Gateway.
 mcp>=1.0.0
+# WebSocket client for lightweight CDP browser automation (no Playwright needed).
+websockets>=13.0

@@ -14,6 +14,7 @@ from typing import Any
 from bedrock_agentcore.runtime import BedrockAgentCoreApp
 from strands import Agent
 
+from src.agent.browser_tools import load_browser_tools
 from src.agent.mcp_tools import get_aws_api_mcp_tools, get_eks_mcp_tools, get_gateway_tools
 from src.agent.model import create_model
 
@@ -138,7 +139,30 @@ async def invoke(
     else:
         logger.warning("AWS MCP tools not available")
 
-    tools = [*gateway_tools, *eks_tools, *aws_api_tools]
+    # Load browser tools (lightweight CDP, no Playwright)
+    browser_tools = load_browser_tools()
+    if browser_tools:
+        logger.info("Browser tools loaded: count=%d", len(browser_tools))
+
+    tools = [*gateway_tools, *eks_tools, *aws_api_tools, *browser_tools]
+
+    # Build system prompt with browser awareness
+    retail_store_url = os.getenv(
+        "RETAIL_STORE_URL",
+        "http://k8s-ui-ui-6353f3da9d-613966318.us-east-1.elb.amazonaws.com",
+    )
+    system_prompt = (
+        "You are a helpful AI assistant with access to web search, AWS management, "
+        "and browser automation tools.\n\n"
+        "## Browser Capabilities\n"
+        "You can browse websites, take screenshots, and describe web page content "
+        "using the take_screenshot and browse_webpage tools. When users ask you to "
+        "browse a website, take a screenshot, or describe what's on a page, use these tools.\n\n"
+        f"The retail store demo is available at: {retail_store_url}\n"
+        'When users mention "the retail store" or "the store", use this URL.\n\n'
+        "IMPORTANT: Browser sessions are managed automatically — each tool call "
+        "starts and stops its own session.\n"
+    )
 
     # Create session manager for AgentCore Memory (optional)
     session_manager = None
@@ -169,7 +193,11 @@ async def invoke(
     error_count = 0
 
     try:
-        agent_kwargs: dict[str, Any] = {"model": create_model(), "tools": tools}
+        agent_kwargs: dict[str, Any] = {
+            "model": create_model(),
+            "tools": tools,
+            "system_prompt": system_prompt,
+        }
         if session_manager is not None:
             agent_kwargs["session_manager"] = session_manager
 

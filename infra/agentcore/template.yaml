@@ -470,6 +470,7 @@ Resources:
         EKS_MCP_REGION: !Ref EksMcpRegion
         AWS_MCP_REGION: !Ref AwsMcpRegion
         AGENTCORE_MEMORY_ID: !GetAtt AgentCoreMemory.MemoryId
+        RETAIL_STORE_URL: "http://k8s-ui-ui-6353f3da9d-613966318.us-east-1.elb.amazonaws.com"
         # Gateway URL is set manually via update-agent-runtime after CLI creation
         # AGENTCORE_GATEWAY_URL: https://strands-demo-gateway-dyu2bzplen.gateway.bedrock-agentcore.us-east-1.amazonaws.com/mcp
 
