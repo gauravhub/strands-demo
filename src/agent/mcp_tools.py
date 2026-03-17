@@ -1,4 +1,4 @@
-"""MCP Server tool loaders — connects to managed AWS MCP Servers via SigV4."""
+"""Tool loaders — MCP Servers via SigV4 and AgentCore Browser."""
 
 from __future__ import annotations
 
@@ -172,3 +172,28 @@ def get_aws_api_mcp_tools() -> tuple[Any | None, list]:
             exc_info=True,
         )
         return None, []
+
+
+def load_browser_tools() -> list:
+    """Load AgentCore Browser tools using the pre-built strands-agents-tools browser.
+
+    Returns:
+        List of browser tools. Empty list on failure (graceful degradation).
+    """
+    region = os.getenv("AWS_REGION") or os.getenv("AWS_DEFAULT_REGION") or "us-east-1"
+
+    try:
+        from strands_tools.browser import AgentCoreBrowser
+
+        browser_tool = AgentCoreBrowser(region=region)
+        tools = [browser_tool.browser]
+        logger.info("AgentCore Browser tools loaded: region=%s tool_count=%d", region, len(tools))
+        return tools
+
+    except Exception:
+        logger.warning(
+            "Failed to load AgentCore Browser tools — "
+            "browser capabilities will not be available",
+            exc_info=True,
+        )
+        return []
