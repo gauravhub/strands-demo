@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import asyncio
+import base64
 import logging
+import re
 from typing import TYPE_CHECKING
 
 import streamlit as st
@@ -142,6 +144,51 @@ async def _stream_turn(agent: Agent, user_message: str) -> None:
         )
 
 
+def _render_tool_result(result: str) -> None:
+    """Render a tool result, detecting and displaying base64 images inline."""
+    if result is None:
+        st.caption("Awaiting result…")
+        return
+
+    # Detect base64-encoded images in the result
+    # Pattern: data:image/png;base64,... or raw base64 PNG data
+    img_match = re.search(r"data:image/[a-z]+;base64,([A-Za-z0-9+/=]+)", result)
+    if img_match:
+        try:
+            img_bytes = base64.b64decode(img_match.group(1))
+            st.image(img_bytes, caption="Browser Screenshot", use_container_width=True)
+            # Render any text outside the image data
+            text_before = result[: img_match.start()].strip()
+            text_after = result[img_match.end() :].strip()
+            if text_before:
+                st.markdown(text_before)
+            if text_after:
+                st.markdown(text_after)
+            return
+        except Exception:
+            pass  # Fall through to markdown rendering
+
+    # Check for raw base64 PNG (starts with PNG header in base64: iVBORw0KGgo)
+    if "iVBORw0KGgo" in result and len(result) > 1000:
+        # Extract the base64 block
+        b64_match = re.search(r"([A-Za-z0-9+/=]{100,})", result)
+        if b64_match:
+            try:
+                img_bytes = base64.b64decode(b64_match.group(1))
+                st.image(img_bytes, caption="Browser Screenshot", use_container_width=True)
+                text_before = result[: b64_match.start()].strip()
+                text_after = result[b64_match.end() :].strip()
+                if text_before:
+                    st.markdown(text_before)
+                if text_after:
+                    st.markdown(text_after)
+                return
+            except Exception:
+                pass
+
+    st.markdown(result)
+
+
 def _render_tools_live(tool_calls: list, placeholder: st.delta_generator.DeltaGenerator) -> None:
     """Render current tool calls into a live placeholder."""
     if not tool_calls:
@@ -155,10 +202,7 @@ def _render_tools_live(tool_calls: list, placeholder: st.delta_generator.DeltaGe
                     st.json(inp)
                 else:
                     st.code(str(inp))
-            if tc["result"] is not None:
-                st.markdown(tc["result"])
-            else:
-                st.caption("Awaiting result…")
+            _render_tool_result(tc.get("result"))
 
 
 # ── Chat History Rendering ─────────────────────────────────────────────────────
@@ -202,10 +246,7 @@ def _render_tools_section(msg: dict) -> None:
                     st.json(inp)
                 else:
                     st.code(str(inp))
-            if tc["result"] is not None:
-                st.markdown(tc["result"])
-            else:
-                st.caption("Awaiting result…")
+            _render_tool_result(tc.get("result"))
 
 
 # ── Input ──────────────────────────────────────────────────────────────────────

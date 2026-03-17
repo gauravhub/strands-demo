@@ -18,6 +18,8 @@ dependencies = [
     "bedrock-agentcore>=0.1.0",
     "requests>=2.31.0",
     "mcp-proxy-for-aws>=1.0.0",
+    "playwright>=1.40.0",
+    "nest-asyncio>=1.5.0",
 ]
 
 [dependency-groups]

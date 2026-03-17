@@ -19,10 +19,10 @@
 
 **Purpose**: Install dependencies and configure environment
 
-- [ ] T001 Install `playwright` and `nest-asyncio` dependencies and update `pyproject.toml` with these new dependencies
-- [ ] T002 [P] Add `RETAIL_STORE_URL` environment variable to `.env.example` with default value `http://k8s-ui-ui-6353f3da9d-613966318.us-east-1.elb.amazonaws.com`
-- [ ] T003 [P] Add `RETAIL_STORE_URL` to `.env` with the ALB URL value
-- [ ] T004 Verify `strands_tools.browser.AgentCoreBrowser` imports successfully (`python3 -c "from strands_tools.browser import AgentCoreBrowser; print('OK')"`)
+- [x] T001 Install `playwright` and `nest-asyncio` dependencies and update `pyproject.toml` with these new dependencies
+- [x] T002 [P] Add `RETAIL_STORE_URL` environment variable to `.env.example` with default value `http://k8s-ui-ui-6353f3da9d-613966318.us-east-1.elb.amazonaws.com`
+- [x] T003 [P] Add `RETAIL_STORE_URL` to `.env` with the ALB URL value
+- [x] T004 Verify `strands_tools.browser.AgentCoreBrowser` imports successfully (`python3 -c "from strands_tools.browser import AgentCoreBrowser; print('OK')"`)
 
 ---
 
@@ -30,9 +30,9 @@
 
 **Purpose**: Add browser tool loader following existing patterns — MUST complete before user stories
 
-- [ ] T005 Add `load_browser_tools()` function in `src/agent/mcp_tools.py` that creates `AgentCoreBrowser(region=os.environ.get("AWS_REGION", "us-east-1"))` and returns `[browser_tool.browser]`, with try/except returning `[]` on failure (matching existing graceful degradation pattern)
-- [ ] T006 Update `create_agent()` in `src/agent/chatbot.py` to call `load_browser_tools()`, merge browser tools into the agent's tool list (`tools = [*gateway_tools, *eks_tools, *aws_api_tools, *browser_tools]`), and update the log message to include browser tool count
-- [ ] T007 Add a `system_prompt` parameter to the `Agent()` constructor call in `src/agent/chatbot.py` that mentions browser capabilities, includes `RETAIL_STORE_URL` as the default browsing target, and instructs the agent to always stop browser sessions after use
+- [x] T005 Add `load_browser_tools()` function in `src/agent/mcp_tools.py` that creates `AgentCoreBrowser(region=os.environ.get("AWS_REGION", "us-east-1"))` and returns `[browser_tool.browser]`, with try/except returning `[]` on failure (matching existing graceful degradation pattern)
+- [x] T006 Update `create_agent()` in `src/agent/chatbot.py` to call `load_browser_tools()`, merge browser tools into the agent's tool list (`tools = [*gateway_tools, *eks_tools, *aws_api_tools, *browser_tools]`), and update the log message to include browser tool count
+- [x] T007 Add a `system_prompt` parameter to the `Agent()` constructor call in `src/agent/chatbot.py` that mentions browser capabilities, includes `RETAIL_STORE_URL` as the default browsing target, and instructs the agent to always stop browser sessions after use
 
 **Checkpoint**: Agent loads with browser tools available. Other tools still work. If browser import fails, agent loads without browser tools.
 
@@ -48,9 +48,9 @@
 
 ### Implementation for User Story 1
 
-- [ ] T008 [US1] Update `src/chat/ui.py` to detect base64 image data in tool results and render with `st.image()` — check if tool result contains base64 PNG data (e.g., starts with `data:image/` or contains PNG header pattern) and render as image instead of markdown text, within the existing "🛠 Tools Used" expander
-- [ ] T009 [US1] Deploy and test: run `streamlit run app.py`, type "take a screenshot of the retail store" in chat, verify screenshot displays inline and agent describes page content
-- [ ] T010 [US1] Verify browser session cleanup: after the screenshot interaction, confirm no orphaned sessions exist (`aws bedrock-agentcore list-browser-sessions` or check AgentCore console)
+- [x] T008 [US1] Update `src/chat/ui.py` to detect base64 image data in tool results and render with `st.image()` — check if tool result contains base64 PNG data (e.g., starts with `data:image/` or contains PNG header pattern) and render as image instead of markdown text, within the existing "🛠 Tools Used" expander
+- [x] T009 [US1] Deploy and test: run `streamlit run app.py`, type "take a screenshot of the retail store" in chat, verify screenshot displays inline and agent describes page content
+- [x] T010 [US1] Verify browser session cleanup: after the screenshot interaction, confirm no orphaned sessions exist (`aws bedrock-agentcore list-browser-sessions` or check AgentCore console)
 
 **Checkpoint**: Screenshots display inline in chat, agent describes page content, sessions cleaned up
 
@@ -66,8 +66,8 @@
 
 ### Implementation for User Story 2
 
-- [ ] T011 [US2] Test text-only browsing: type "what's on the retail store homepage?" in chat, verify agent navigates and returns a text summary of page content (headings, navigation, products) without a screenshot
-- [ ] T012 [US2] Test with arbitrary URL: type "browse https://example.com and describe what you see" to verify the agent works with any public URL
+- [x] T011 [US2] Test text-only browsing: type "what's on the retail store homepage?" in chat, verify agent navigates and returns a text summary of page content (headings, navigation, products) without a screenshot
+- [x] T012 [US2] Test with arbitrary URL: type "browse https://example.com and describe what you see" to verify the agent works with any public URL
 
 **Checkpoint**: Agent can browse any URL and return text descriptions
 
@@ -83,8 +83,8 @@
 
 ### Implementation for User Story 3
 
-- [ ] T013 [US3] Verify existing tools unaffected: with browser tools loaded, type a non-browser query (e.g., "search for Python tutorials" or "list my EKS clusters") and confirm the agent responds normally using Tavily/EKS/AWS API tools
-- [ ] T014 [US3] Test browser error handling: type "take a screenshot of https://nonexistent.invalid" and verify the agent reports the error gracefully without crashing
+- [x] T013 [US3] Verify existing tools unaffected: with browser tools loaded, type a non-browser query (e.g., "search for Python tutorials" or "list my EKS clusters") and confirm the agent responds normally using Tavily/EKS/AWS API tools
+- [x] T014 [US3] Test browser error handling: type "take a screenshot of https://nonexistent.invalid" and verify the agent reports the error gracefully without crashing
 
 **Checkpoint**: Existing capabilities work alongside browser tools, errors handled gracefully
 
@@ -94,8 +94,8 @@
 
 **Purpose**: Final validation and cleanup
 
-- [ ] T015 Verify `streamlit run app.py` works with all tools (browser + Tavily + EKS + AWS API) loading successfully — check logs for tool counts
-- [ ] T016 [P] Verify `.env.example` documents `RETAIL_STORE_URL` for new deployments
+- [x] T015 Verify `streamlit run app.py` works with all tools (browser + Tavily + EKS + AWS API) loading successfully — check logs for tool counts
+- [x] T016 [P] Verify `.env.example` documents `RETAIL_STORE_URL` for new deployments
 
 ---
 

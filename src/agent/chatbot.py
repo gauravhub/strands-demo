@@ -1,4 +1,4 @@
-"""Strands Agent factory with Gateway (Tavily), EKS MCP, and AWS API MCP tools."""
+"""Strands Agent factory with Gateway (Tavily), EKS MCP, AWS API MCP, and AgentCore Browser tools."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from typing import Any
 from strands import Agent
 
 from src.agent.model import create_model
-from src.agent.mcp_tools import get_aws_api_mcp_tools, get_eks_mcp_tools, get_gateway_tools
+from src.agent.mcp_tools import get_aws_api_mcp_tools, get_eks_mcp_tools, get_gateway_tools, load_browser_tools
 
 logger = logging.getLogger(__name__)
 
@@ -98,18 +98,45 @@ def create_agent(
     else:
         logger.info("AgentCore Memory not configured — agent will operate without memory")
 
+    # Load AgentCore Browser tools
+    browser_tools = load_browser_tools()
+
+    # Build system prompt with browser awareness
+    retail_store_url = os.getenv(
+        "RETAIL_STORE_URL",
+        "http://k8s-ui-ui-6353f3da9d-613966318.us-east-1.elb.amazonaws.com",
+    )
+    system_prompt = (
+        "You are a helpful AI assistant with access to web search, AWS management, "
+        "and browser automation tools.\n\n"
+        "## Browser Capabilities\n"
+        "You can browse websites, take screenshots, and describe web page content "
+        "using the browser tool. When users ask you to browse a website, take a "
+        "screenshot, or describe what's on a page, use the browser tool.\n\n"
+        f"The retail store demo is available at: {retail_store_url}\n"
+        'When users mention "the retail store" or "the store", use this URL.\n\n'
+        "IMPORTANT: Always ensure browser sessions are stopped after use. "
+        "The browser tool handles session lifecycle automatically, but if you "
+        "encounter errors, inform the user clearly.\n"
+    )
+
     try:
-        tools = [*gateway_tools, *eks_tools, *aws_api_tools]
-        agent_kwargs: dict[str, Any] = {"model": create_model(), "tools": tools}
+        tools = [*gateway_tools, *eks_tools, *aws_api_tools, *browser_tools]
+        agent_kwargs: dict[str, Any] = {
+            "model": create_model(),
+            "tools": tools,
+            "system_prompt": system_prompt,
+        }
         if session_manager is not None:
             agent_kwargs["session_manager"] = session_manager
 
         agent = Agent(**agent_kwargs)
         logger.info(
-            "Strands Agent created: tools=[%d Gateway + %d EKS MCP + %d AWS MCP] memory=%s",
+            "Strands Agent created: tools=[%d Gateway + %d EKS MCP + %d AWS MCP + %d Browser] memory=%s",
             len(gateway_tools),
             len(eks_tools),
             len(aws_api_tools),
+            len(browser_tools),
             "enabled" if session_manager else "disabled",
         )
         return agent, mcp_clients, session_manager
