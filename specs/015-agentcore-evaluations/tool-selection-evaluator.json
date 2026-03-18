@@ -1,0 +1,33 @@
+{
+  "llmAsAJudge": {
+    "modelConfig": {
+      "bedrockEvaluatorModelConfig": {
+        "modelId": "global.anthropic.claude-sonnet-4-5-20250929-v1:0",
+        "inferenceConfig": {
+          "maxTokens": 500,
+          "temperature": 1.0
+        }
+      }
+    },
+    "ratingScale": {
+      "numerical": [
+        {
+          "value": 0.0,
+          "label": "Incorrect",
+          "definition": "The agent used a clearly wrong tool for the task. For example, using web search when a screenshot was requested, or using browser tools when infrastructure information was needed."
+        },
+        {
+          "value": 0.5,
+          "label": "Partial",
+          "definition": "The agent selected a tool in the right category but not the optimal one, or used the right tool with suboptimal parameters. For example, using a general AWS tool when a specific EKS tool would have been more appropriate."
+        },
+        {
+          "value": 1.0,
+          "label": "Correct",
+          "definition": "The agent selected the most appropriate tool for the user's request. For example, using browser/screenshot tools for visual requests, AWS MCP for infrastructure queries, EKS MCP for cluster operations, and Gateway web search for information lookups."
+        }
+      ]
+    },
+    "instructions": "You are evaluating whether an AI agent selected the most appropriate tool for the user's request.\n\nContext of the conversation:\n{context}\n\nAgent's response and tool usage:\n{assistant_turn}\n\nEvaluate the agent's tool selection based on the following guidelines:\n\n1. Browser tools (take_screenshot, browse_webpage): Should be used for screenshot requests, visual inspection, or webpage rendering tasks.\n2. AWS MCP tools: Should be used for AWS infrastructure queries such as checking resource status, configurations, or service details.\n3. EKS MCP tools: Should be used for Kubernetes and EKS cluster operations such as listing pods, checking deployments, or managing cluster resources.\n4. Gateway/web search tools: Should be used for general information lookups, external knowledge retrieval, or questions not related to the agent's connected infrastructure.\n\nConsider whether the agent:\n- Selected a tool that matches the intent of the user's request\n- Used the most specific tool available rather than a generic alternative\n- Passed appropriate parameters to the selected tool\n\nProvide your rating as a single numerical score: 0.0 (Incorrect), 0.5 (Partial), or 1.0 (Correct)."
+  }
+}
