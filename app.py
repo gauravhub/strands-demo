@@ -119,6 +119,36 @@ def show_main_app() -> None:
 
     st.divider()
 
+    # Debug sidebar with session and configuration metadata
+    with st.sidebar:
+        st.header("Session Info")
+        st.markdown(f"**User:** {username}")
+        st.markdown(f"**Mode:** {mode_label}")
+        st.code(session_id, language=None)
+
+        st.divider()
+        st.header("Configuration")
+        st.markdown(f"**Region:** `{os.getenv('AWS_REGION', 'us-east-1')}`")
+        if _agentcore_config:
+            st.markdown(f"**Runtime ARN:**")
+            st.code(_agentcore_config.runtime_arn, language=None)
+        retail_url = os.getenv("RETAIL_STORE_URL", "not set")
+        st.markdown(f"**Retail Store URL:**")
+        st.code(retail_url, language=None)
+        memory_id_display = os.getenv("AGENTCORE_MEMORY_ID", "not configured")
+        st.markdown(f"**Memory ID:**")
+        st.code(memory_id_display if memory_id_display else "not configured", language=None)
+        gateway_display = _gateway_url or "not configured"
+        st.markdown(f"**Gateway URL:**")
+        st.code(gateway_display, language=None)
+
+        st.divider()
+        st.header("Messages")
+        msg_count = len(st.session_state.get("messages", []))
+        st.metric("Messages in session", msg_count)
+
+        st.link_button("Sign Out", logout_url, type="secondary", use_container_width=True)
+
     memory_id = os.getenv("AGENTCORE_MEMORY_ID", "")
 
     if _agentcore_config:
