@@ -127,20 +127,12 @@ def show_main_app() -> None:
         st.code(session_id, language=None)
 
         st.divider()
-        st.header("Configuration")
-        st.markdown(f"**Region:** `{os.getenv('AWS_REGION', 'us-east-1')}`")
-        if _agentcore_config:
-            st.markdown(f"**Runtime ARN:**")
-            st.code(_agentcore_config.runtime_arn, language=None)
-        retail_url = os.getenv("RETAIL_STORE_URL", "not set")
-        st.markdown(f"**Retail Store URL:**")
-        st.code(retail_url, language=None)
-        memory_id_display = os.getenv("AGENTCORE_MEMORY_ID", "not configured")
-        st.markdown(f"**Memory ID:**")
-        st.code(memory_id_display if memory_id_display else "not configured", language=None)
-        gateway_display = _gateway_url or "not configured"
-        st.markdown(f"**Gateway URL:**")
-        st.code(gateway_display, language=None)
+        st.header("Access Token")
+        access_token = user.get("access_token", "")
+        if access_token:
+            st.code(access_token, language=None)
+        else:
+            st.markdown("*No access token available*")
 
         st.divider()
         st.header("Messages")
