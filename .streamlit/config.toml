@@ -1,8 +1,2 @@
-[global]
-developmentMode = true
-
-[runner]
-fastReruns = true
-
 [logger]
 level = "debug"
