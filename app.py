@@ -96,27 +96,7 @@ def show_main_app() -> None:
         f"&logout_uri={config.redirect_uri}"
     )
 
-    # Header bar: title on the left, user info + logout on the right
-    header_left, header_right = st.columns([3, 1])
-    with header_left:
-        st.title("Amazon Bedrock AgentCore Demo")
-    with header_right:
-        st.markdown(
-            f"""
-            <div style="text-align: right; padding-top: 16px;">
-                <span style="font-size: 0.9em; color: #555;">
-                    <strong>{username}</strong> &nbsp;|&nbsp; Mode: {mode_label}
-                </span>
-                <br/>
-                <span style="font-size: 0.8em; color: #888;">
-                    Session: <code>{session_id}</code>
-                </span>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-        st.link_button("Sign Out", logout_url, type="secondary", use_container_width=True)
-
+    st.title("Amazon Bedrock AgentCore Demo")
     st.divider()
 
     # Debug sidebar with session and configuration metadata
