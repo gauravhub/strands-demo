@@ -53,7 +53,7 @@ if _agentcore_config:
 else:
     logger.info("Local agent mode (AGENTCORE_RUNTIME_ARN not set)")
 
-st.set_page_config(page_title="Strands Demo", page_icon="🤖")
+st.set_page_config(page_title="Amazon Bedrock AgentCore Demo", page_icon="🤖", layout="wide")
 
 
 # ── UI Helpers ─────────────────────────────────────────────────────────────────
@@ -61,8 +61,8 @@ st.set_page_config(page_title="Strands Demo", page_icon="🤖")
 
 def show_landing(error_msg: str | None = None) -> None:
     """Render the unauthenticated landing page with an optional error message."""
-    st.title("🤖 Strands Demo")
-    st.write("A demo application using AWS Strands Agents.")
+    st.title("Amazon Bedrock AgentCore Demo")
+    st.markdown("An AI agent demo powered by **AWS Strands Agents SDK** and **Amazon Bedrock AgentCore**.")
     st.divider()
 
     if error_msg:
@@ -71,16 +71,15 @@ def show_landing(error_msg: str | None = None) -> None:
     # Generate auth URL eagerly so st.link_button renders a direct <a> tag.
     # No JS redirect needed — works on SCC, localhost, and headless browsers.
     auth_url = generate_auth_request(config)
-    st.link_button("Login", auth_url, type="primary", use_container_width=True)
+    st.link_button("Sign In with AWS Cognito", auth_url, type="primary", use_container_width=False)
 
 
 def show_main_app() -> None:
     """Render the main application view for authenticated users."""
     user = get_user()
-    st.title("🤖 Strands Demo")
+    username = user.get("username", "unknown")
 
     if _agentcore_config:
-        # AgentCore mode — forward Cognito token to the managed Runtime endpoint
         session_id = st.session_state.setdefault(
             "agentcore_session_id", str(uuid.uuid4())
         )
@@ -91,20 +90,32 @@ def show_main_app() -> None:
         )
         mode_label = "Local"
 
-    st.caption(
-        f"Logged in as **{user.get('username', 'unknown')}** · "
-        f"Mode: **{mode_label}** · "
-        f"Session: `{session_id[:8]}…`"
-    )
-
     logout_url = (
         f"{config.logout_endpoint}"
         f"?client_id={config.client_id}"
         f"&logout_uri={config.redirect_uri}"
     )
-    col1, col2 = st.columns([8, 1])
-    with col2:
-        st.link_button("Logout", logout_url, type="secondary")
+
+    # Header bar: title on the left, user info + logout on the right
+    header_left, header_right = st.columns([3, 1])
+    with header_left:
+        st.title("Amazon Bedrock AgentCore Demo")
+    with header_right:
+        st.markdown(
+            f"""
+            <div style="text-align: right; padding-top: 16px;">
+                <span style="font-size: 0.9em; color: #555;">
+                    <strong>{username}</strong> &nbsp;|&nbsp; Mode: {mode_label}
+                </span>
+                <br/>
+                <span style="font-size: 0.8em; color: #888;">
+                    Session: <code>{session_id}</code>
+                </span>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+        st.link_button("Sign Out", logout_url, type="secondary", use_container_width=True)
 
     st.divider()
 
