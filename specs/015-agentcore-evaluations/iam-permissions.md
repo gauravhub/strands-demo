@@ -71,4 +71,9 @@ Target log group pattern:
 
 ## Deployed Role Details
 
-_To be filled in during T008 after the role is created by the CLI._
+- **Role Name**: `AgentCoreEvalsSDK-us-east-1-70d2f5e255`
+- **Role ARN**: `arn:aws:iam::829040135710:role/AgentCoreEvalsSDK-us-east-1-70d2f5e255`
+- **Inline Policy**: `AgentCoreEvaluationPolicy-us-east-1-70d2f5e255`
+- **Attached Managed Policies**: None
+- **Created By**: `agentcore eval online create` CLI (auto-created during T005)
+- **Associated Config**: `strands_demo_eval-aRaiodB5tF`

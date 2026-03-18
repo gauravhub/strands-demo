@@ -10,7 +10,7 @@ EVALUATORS=(
   "Builtin.Helpfulness"
   "Builtin.Correctness"
   "Builtin.Faithfulness"
-  "tool_selection_accuracy"
+  "tool_selection_accuracy-EeUCiaBBP3"
 )
 
 usage() {

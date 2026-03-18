@@ -32,7 +32,7 @@
 **Note**: This phase is ordered before US1/US2/US4 because the custom evaluator must exist before it can be referenced in on-demand runs or online configs.
 
 <!-- sequential -->
-- [ ] T003 [US3] Register the custom evaluator by running: `agentcore eval evaluator create --name "tool_selection_accuracy" --config specs/015-agentcore-evaluations/tool-selection-evaluator.json --level TRACE --description "Evaluates whether the agent selected the correct tools for the user request"`. Verify it appears in `agentcore eval evaluator list`.
+- [x] T003 [US3] Register the custom evaluator by running: `agentcore eval evaluator create --name "tool_selection_accuracy" --config specs/015-agentcore-evaluations/tool-selection-evaluator.json --level TRACE --description "Evaluates whether the agent selected the correct tools for the user request"`. Verify it appears in `agentcore eval evaluator list`.
 
 **Checkpoint**: Custom evaluator registered and visible in evaluator list.
 
@@ -60,7 +60,7 @@
 **Independent Test**: Run `./scripts/eval-agent.sh setup` and verify the online evaluation config is created with status ACTIVE. Then run `./scripts/eval-agent.sh list` to confirm it appears.
 
 <!-- sequential -->
-- [ ] T005 [US1] Run `./scripts/eval-agent.sh setup` to create the online evaluation config (strands_demo_eval) with 100% sampling rate and all 5 evaluators. Verify config status transitions to ACTIVE. Save the returned config ID for future reference.
+- [x] T005 [US1] Run `./scripts/eval-agent.sh setup` to create the online evaluation config (strands_demo_eval) with 100% sampling rate and all 5 evaluators. Verify config status transitions to ACTIVE. Save the returned config ID for future reference.
 
 **Checkpoint**: Online evaluation config is ACTIVE and sampling 100% of sessions.
 
@@ -73,8 +73,8 @@
 **Independent Test**: Invoke the agent, wait for observability data, then run `./scripts/eval-agent.sh run <session-id>` and verify scores are returned for all evaluators.
 
 <!-- sequential -->
-- [ ] T006 [US2] Invoke the deployed agent via `agentcore invoke --input "What AWS services can you help me with?"` to generate a session with observability data. Note the session ID from the output or from `agentcore obs list`.
-- [ ] T007 [US2] Wait 2-5 minutes for CloudWatch logs to populate, then run `./scripts/eval-agent.sh run <session-id>` using the session from T006. Verify scores and explanations are returned for all 5 evaluators (GoalSuccessRate, Helpfulness, Correctness, Faithfulness, tool_selection_accuracy). Optionally save results with `--output results.json`.
+- [x] T006 [US2] Invoke the deployed agent via `agentcore invoke --input "What AWS services can you help me with?"` to generate a session with observability data. Note the session ID from the output or from `agentcore obs list`.
+- [x] T007 [US2] Wait 2-5 minutes for CloudWatch logs to populate, then run `./scripts/eval-agent.sh run <session-id>` using the session from T006. Verify scores and explanations are returned for all 5 evaluators (GoalSuccessRate, Helpfulness, Correctness, Faithfulness, tool_selection_accuracy). Optionally save results with `--output results.json`.
 
 **Checkpoint**: On-demand evaluation returns scores from all 5 evaluators for a real session.
 
@@ -87,7 +87,7 @@
 **Independent Test**: Check that T005 (online config creation) and T007 (on-demand eval) both completed without IAM permission errors.
 
 <!-- sequential -->
-- [ ] T008 [US5] Verify the evaluation execution role was auto-created by running `aws iam list-roles --query "Roles[?contains(RoleName, 'AgentCoreEvalsSDK')]"`. Document the role name, ARN, and attached policies in specs/015-agentcore-evaluations/iam-permissions.md (update the file created in T002 with actual values from the deployed role).
+- [x] T008 [US5] Verify the evaluation execution role was auto-created by running `aws iam list-roles --query "Roles[?contains(RoleName, 'AgentCoreEvalsSDK')]"`. Document the role name, ARN, and attached policies in specs/015-agentcore-evaluations/iam-permissions.md (update the file created in T002 with actual values from the deployed role).
 
 **Checkpoint**: IAM permissions documented with actual role details from deployment.
 
