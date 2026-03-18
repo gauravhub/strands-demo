@@ -27,6 +27,7 @@ Auto-generated from all feature plans. Last updated: 2026-03-09
 - N/A — AWS CLI commands + Kubernetes YAML manifests + AWS CLI v2, kubectl (with Kustomize) (014-cloudfront-private-alb)
 - Bash (shell script), JSON (evaluator config) — no Python code changes + `bedrock-agentcore-starter-toolkit` CLI (`agentcore` command, already installed) (015-agentcore-evaluations)
 - CloudWatch Logs (evaluation results written to `/aws/bedrock-agentcore/evaluations/results/{config-id}`) (015-agentcore-evaluations)
+- Python 3.11+ + `strands-agents` (AnthropicModel), `anthropic` SDK (already installed) (016-prompt-caching)
 
 - Python 3.11+ + `strands-agents`, `strands-agents-tools`, `streamlit`, `boto3`, (001-python-env-bootstrap)
 
@@ -46,9 +47,9 @@ cd src [ONLY COMMANDS FOR ACTIVE TECHNOLOGIES][ONLY COMMANDS FOR ACTIVE TECHNOLO
 Python 3.11+: Follow standard conventions
 
 ## Recent Changes
+- 016-prompt-caching: Added Python 3.11+ + `strands-agents` (AnthropicModel), `anthropic` SDK (already installed)
 - 015-agentcore-evaluations: Added Bash (shell script), JSON (evaluator config) — no Python code changes + `bedrock-agentcore-starter-toolkit` CLI (`agentcore` command, already installed)
 - 014-cloudfront-private-alb: Added N/A — AWS CLI commands + Kubernetes YAML manifests + AWS CLI v2, kubectl (with Kustomize)
-- 013-agentcore-browser: Added Python 3.11+ + `strands-agents-tools>=0.1.0` (includes `AgentCoreBrowser`), `bedrock-agentcore>=0.1.0` (already installed), `playwright`, `nest-asyncio`, `streamlit>=1.35.0`
 
 
 <!-- MANUAL ADDITIONS START -->

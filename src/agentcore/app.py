@@ -191,6 +191,8 @@ async def invoke(
     text_events = 0
     tool_call_count = 0
     error_count = 0
+    cache_creation_tokens = 0
+    cache_read_tokens = 0
 
     try:
         agent_kwargs: dict[str, Any] = {
@@ -203,6 +205,15 @@ async def invoke(
 
         agent = Agent(**agent_kwargs)
         async for raw_event in agent.stream_async(prompt):
+            # Extract cache metrics from usage data in streaming events
+            usage = raw_event.get("usage") or {}
+            if not usage and "message" in raw_event:
+                msg = raw_event["message"]
+                if isinstance(msg, dict):
+                    usage = msg.get("usage") or {}
+            cache_creation_tokens += usage.get("cache_creation_input_tokens", 0)
+            cache_read_tokens += usage.get("cache_read_input_tokens", 0)
+
             sse = _to_sse_event(raw_event)
             if sse is None:
                 continue
@@ -234,11 +245,14 @@ async def invoke(
 
     finally:
         logger.info(
-            "Invocation complete: session_id=%s text_events=%d tool_calls=%d errors=%d",
+            "Invocation complete: session_id=%s text_events=%d tool_calls=%d errors=%d"
+            " cache_creation_tokens=%d cache_read_tokens=%d",
             session_id,
             text_events,
             tool_call_count,
             error_count,
+            cache_creation_tokens,
+            cache_read_tokens,
         )
         if gateway_client is not None:
             try:
